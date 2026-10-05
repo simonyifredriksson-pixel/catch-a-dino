@@ -341,3 +341,19 @@ svg { width: 1em; height: 1em; vertical-align: -0.12em; }
   .dexwrap { flex-direction: column; } .dxcard { width: auto; position: static; }
   .logo .l2 { font-size: 5rem; }
 }
+
+/* the professor talks */
+#say { position: absolute; left: 16px; bottom: 200px; width: min(400px, 44vw); background: var(--panel); border: 4px solid var(--ink); border-radius: 16px; padding: 10px 14px 12px 74px; box-shadow: var(--shadow); opacity: 0; transform: translateY(20px); transition: all 0.35s cubic-bezier(.3, 1.5, .6, 1); pointer-events: none; }
+#say.on { opacity: 1; transform: none; }
+#say .sf { position: absolute; left: 10px; top: 10px; width: 54px; height: 54px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, #f4cfa0 0 34%, transparent 35%), radial-gradient(circle at 50% 18%, #e8e8e8 0 30%, transparent 31%), radial-gradient(circle at 50% 100%, #c8a060 0 55%, transparent 56%), #7ab0d0; border: 3px solid var(--ink); }
+#say .sf::after { content: ''; position: absolute; left: 13px; top: 18px; width: 22px; height: 6px; border: 2px solid #3a2a18; border-radius: 4px; }
+#say .sn { font: 1rem 'Lilita One', sans-serif; color: #6a4a18; letter-spacing: 0.5px; }
+#say .sx { font-weight: 800; font-size: 0.9rem; line-height: 1.3; }
+/* sneaking */
+#sneak { position: absolute; left: 50%; bottom: 182px; transform: translateX(-50%); font: 0.85rem 'Lilita One', sans-serif; letter-spacing: 1px; color: #d8f0ff; background: rgba(20, 30, 50, 0.7); padding: 3px 12px; border-radius: 9px; display: none; white-space: nowrap; }
+#sneak.on { display: block; }
+/* a bite! */
+#bite { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font: 3rem 'Lilita One', Impact, sans-serif; color: #fff; -webkit-text-stroke: 2px #000; paint-order: stroke fill; text-shadow: 0 4px 0 #000; display: none; }
+#bite.on { display: block; animation: pop 0.25s, blink 0.2s 0.25s infinite alternate; }
+#bite.big { color: #ff6a4a; font-size: 3.8rem; }
+#compass .cm.wp { color: #ff8a3a; }

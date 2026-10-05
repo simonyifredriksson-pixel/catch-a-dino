@@ -81,6 +81,7 @@ export class Effects {
         P.vy -= K.g * dt;
         const d = Math.exp(-K.drag * dt); P.vx *= d; P.vz *= d; if (K.g < 0) P.vy *= d;
         P.x += P.vx * dt; P.y += P.vy * dt; P.z += P.vz * dt;
+        if (K === KIND.bubble && P.y > -0.05) { list.splice(i, 1); continue; }   // bubbles pop at the surface
         const ground = this.g.terrain.ground(P.x, P.z);
         if (K.g > 0 && P.y < Math.max(ground, -0.05) && P.vy < 0) { if (P.K === KIND.splash) { P.age = P.life; continue; } P.y = Math.max(ground, P.y); P.vy *= -0.3; P.vx *= 0.6; P.vz *= 0.6; }
       }

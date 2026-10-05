@@ -54,6 +54,9 @@ export class UI {
       <div id="catchcard"></div>
       <div id="floaters"></div>
       <div id="frost"></div><div id="hurt"></div>
+      <div id="say"><div class="sf"></div><div class="sn"></div><div class="sx"></div></div>
+      <div id="sneak">SNEAKING - quieter, easier snares</div>
+      <div id="bite">BITE!</div>
     `);
     this.ring = $('ring'); this.ringCtx = this.ring.getContext('2d');
   }
@@ -78,6 +81,12 @@ export class UI {
     $('floaters').appendChild(el);
     this.floaters.push({ el, pos: pos ? pos.clone().add(new THREE.Vector3(0, 2.2, 0)) : null, t: 0 });
   }
+  /** the zoo paid out: a little "+$" by the money counter */
+  payout(m) { if (m >= 1) this.floater('+' + money(m) + ' zoo', null, 'money'); }
+  /** someone talks to you (the professor) */
+  say(name, text) { const S = $('say'); S.querySelector('.sn').textContent = name; S.querySelector('.sx').textContent = text; S.classList.add('on'); this.sayT = 5 + text.length * 0.05; }
+  /** the float went under */
+  flashBite(big) { const B = $('bite'); B.textContent = big ? 'SOMETHING BIG!' : 'BITE!'; B.classList.toggle('big', !!big); B.classList.add('on'); this.biteT = 0.9; }
   mark(c, dur = 60) { this.marks = this.marks.filter(m => m.c !== c); this.marks.push({ c, t: dur, kind: 'creature' }); }
   markPoint(x, y, z, label, dur = 30) { this.marks.push({ p: new THREE.Vector3(x, y, z), t: dur, label, kind: 'point' }); }
   mountHint(c) {
@@ -115,12 +124,17 @@ export class UI {
   update(dt) {
     const G = this.g, P = G.player, W = G.W, cam = G.camera;
     this.bannerT -= dt; if (this.bannerT <= 0) $('banner').classList.remove('on');
+    if (this.sayT > 0) { this.sayT -= dt; if (this.sayT <= 0) $('say').classList.remove('on'); }
+    const Fh = G.fishing.hud();
+    if (this.biteT > 0) { this.biteT -= dt; if (this.biteT <= 0 || Fh.state !== 'bite') { this.biteT = 0; $('bite').classList.remove('on'); } }
+    $('sneak').classList.toggle('on', !!P.crouch && !P.mount);
     if (this.cardT > 0) { this.cardT -= dt; if (this.cardT <= 0 || G.input.pressedRaw('KeyE') && this.cardT < 8.5) this.closeCard(); }
     this.root.classList.toggle('hidden', G.phase !== 'play' || !!G.build?.active || G.hideHud);
     // ----- catching
     const C = G.catching.hud();
-    $('charge').classList.toggle('on', C.state === 'charge');
-    $('charge').querySelector('i').style.width = Math.round(C.charge * 100) + '%';
+    const fc = Fh.state === 'charge';
+    $('charge').classList.toggle('on', C.state === 'charge' || fc);
+    $('charge').querySelector('i').style.width = Math.round((fc ? Fh.charge : C.charge) * 100) + '%';
     const fight = C.state === 'fight' && C.bar;
     $('tug').classList.toggle('on', !!fight);
     this.root.classList.toggle('fighting', !!fight);
@@ -134,7 +148,8 @@ export class UI {
       if (C.c && hd.dataset.sp !== C.c.spId) { hd.dataset.sp = C.c.spId; hd.innerHTML = `<img src="${G.inv.icons.creature(C.c.spId, C.c.v)}">`; hd.style.setProperty('--rc', RARITY[C.c.sp.rarity].css); }
       T.querySelector('.tfill i').style.height = Math.round(b.catch * 100) + '%';
       T.querySelector('.tfill').classList.toggle('low', b.catch < 0.2);
-      T.querySelector('.tlabel').textContent = b.over > 0.2 ? 'TOO STRONG FOR THIS ROPE' : b.rage ? 'FURIOUS!' : b.tier >= 4 ? 'LEGEND ON THE ROPE' : b.on > 0.5 ? 'ON IT!' : 'KEEP ITS HEAD IN YOUR LOOP';
+      const fsh = G.catching.F?.fishing, big = G.catching.F?.big;
+      T.querySelector('.tlabel').textContent = b.over > 0.2 ? (fsh ? 'TOO STRONG FOR THIS ROD' : 'TOO STRONG FOR THIS ROPE') : b.rage ? 'FURIOUS!' : b.tier >= 4 ? (fsh ? 'LEGEND ON THE LINE' : 'LEGEND ON THE ROPE') : b.on > 0.5 ? 'ON IT!' : fsh ? (big ? 'SOMETHING BIG - KEEP IT IN THE ZONE' : 'KEEP IT IN THE ZONE') : 'KEEP ITS HEAD IN YOUR LOOP';
       T.classList.toggle('warn', b.over > 0.2);
       T.querySelector('.ttxt').textContent = (C.c ? C.c.sp.name : '') + (b.helpers ? '  +' + b.helpers + ' helping' : '');
       const L = $('lunge');
@@ -165,6 +180,12 @@ export class UI {
     if (C.state === 'snare') ht = 'CLICK when the shrinking ring is inside the <b>green band</b>!';
     else if (fight) ht = 'Hold <b class="key">LMB</b> to pull &nbsp; let go to give slack &nbsp; <b class="key">A</b>/<b class="key">D</b> to brace when it lunges';
     else if (C.state === 'charge') ht = 'Release to throw';
+    else if (Fh.state === 'charge') ht = 'Release to cast - longer hold, farther cast';
+    else if (Fh.state === 'fly' || Fh.state === 'wait') ht = 'Wait for a bite... &nbsp; <b class="key">LMB</b> reels in';
+    else if (Fh.state === 'nibble') ht = 'Nibbling... not yet!';
+    else if (Fh.state === 'bite') ht = '<b class="key">CLICK</b> NOW!';
+    else if (Fh.state === 'reel') ht = 'Reeling in...';
+    else if (Fh.state === 'idle' && TOOLS[G.tools.id]?.kind === 'rod' && !P.mount) ht = 'Hold <b class="key">LMB</b> to cast into the water';
     else if (C.state === 'assist') ht = 'Hold <b class="key">LMB</b> to help pull!';
     else if (P.mount) { const m = P.mount; ht = m.flyer ? (m.flying ? '<b class="key">W</b> fly where you look &nbsp; <b class="key">SPACE</b> climb &nbsp; <b class="key">CTRL</b> dive &nbsp; <b class="key">S</b> land' : '<b class="key">SPACE</b> take off') : m.swimmer ? '<b class="key">W</b> swim where you look &nbsp; <b class="key">SPACE</b> up &nbsp; <b class="key">CTRL</b> down' : ''; }
     $('hint').innerHTML = ht; $('hint').classList.toggle('on', !!ht);
@@ -209,7 +230,7 @@ export class UI {
     this._tT -= dt; if (this._tT > 0) return; this._tT = 0.2;
     $('money').querySelector('b').textContent = money(W.money).replace('$', '');
     const Z = G.zoo;
-    $('zoochip').innerHTML = `<span class="zs">${'&#9733;'.repeat(Z.level)}<i>${'&#9733;'.repeat(Math.max(0, 7 - Z.level))}</i></span><span class="za">${svg('heart' in {} ? 'star' : 'star')} ${Z.appeal} appeal</span><span class="zv">${svg('eye')} ${G.visitors.list.length || Z.visitorsWant}</span>`;
+    $('zoochip').innerHTML = `<span class="zs">${'&#9733;'.repeat(Z.level)}<i>${'&#9733;'.repeat(Math.max(0, 7 - Z.level))}</i></span><span class="za">Zoo income <b>+${money(Z.income || 0)}/min</b></span>`;
     const tod = W.tod, hh = Math.floor(tod * 24), mm = Math.floor((tod * 24 - hh) * 60);
     const wk = W.weather.kind, wi = { clear: G.sky.state.night > 0.5 ? 'Clear night' : 'Sunny', cloudy: 'Cloudy', rain: 'Rain', storm: 'Thunderstorm' }[wk];
     const b = G.terrain.biome(P.pos.x, P.pos.z);
@@ -254,6 +275,7 @@ export class UI {
     const mark = (x, z, cls, label, y) => { const a = Math.atan2(x - P.x, z - P.z), px = place(a); if (px == null) return; const d = Math.hypot(x - P.x, z - P.z); mh += `<span class="cm ${cls}" style="left:${px}px">${label}<em>${d > 999 ? (d / 1000).toFixed(1) + 'km' : Math.round(d) + 'm'}</em></span>`; void y; };
     if (!G.inInterior) {
       mark(ZOO.x, ZOO.z, 'zoo', svg('box'));
+      const wp = G.quests.waypoint(); if (wp) mark(wp.x, wp.z, 'wp', svg('star') + '<b>' + esc(wp.label || '') + '</b>');
       for (const B of BEACONS) if (G.W.beacons[B.id]) mark(B.x, B.z, 'bea', svg('sun'));
       for (const M of this.marks) { if (M.c) mark(M.c.pos.x, M.c.pos.z, 'cr', `<i style="background:${RARITY[M.c.sp.rarity].css}"></i>`); else mark(M.p.x, M.p.z, 'pt', svg('star')); }
     }

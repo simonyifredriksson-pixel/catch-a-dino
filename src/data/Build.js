@@ -6,7 +6,8 @@
    aquatic tanks. Aggressive predators belong in a predator paddock - anywhere
    else they get restless, and restless tyrants break out.
    DECOR inside an exhibit makes its animals happier (and the zoo prettier).
-   FACILITIES earn money from visitors and keep them happy.
+   BUILDINGS: the Hatchery (eggs) and a Viewing Deck to admire your animals.
+   There are no visitors to manage: animals on show simply earn money.
    `level` is the zoo star level that unlocks it. */
 export const HABITATS = {
   meadow:   { name: 'Meadow',   ground: '#8cc85a', fence: 'wood',    props: ['fern', 'flowers', 'rock', 'cycad'], level: 0 },
@@ -56,24 +57,18 @@ export const DECOR = {
   fountain: { name: 'Fountain', cat: 'deco', art: 'fountain', price: 1200, level: 3, r: 2.6, joy: 6 },
   topiary:  { name: 'Topiary Dino', cat: 'deco', art: 'topiary', price: 450, level: 2, r: 1.4, joy: 3 },
   balloon:  { name: 'Balloon Stall', cat: 'deco', art: 'balloon', price: 350, level: 1, r: 1, joy: 3 },
-  food:     { name: 'Snack Stand', cat: 'shop', art: 'food', price: 800, level: 0, r: 2.2, income: 6, joy: 2 },
-  drinks:   { name: 'Drinks Stand', cat: 'shop', art: 'drinks', price: 700, level: 0, r: 2, income: 5, joy: 2 },
-  gift:     { name: 'Gift Shop', cat: 'shop', art: 'gift', price: 3000, level: 1, r: 3.5, income: 14, joy: 3 },
-  cafe:     { name: 'Dino Diner', cat: 'shop', art: 'cafe', price: 7500, level: 3, r: 4.5, income: 30, joy: 5 },
-  toilet:   { name: 'Restrooms', cat: 'shop', art: 'toilet', price: 900, level: 1, r: 2.5, joy: 6 },
-  platform: { name: 'Viewing Deck', cat: 'shop', art: 'platform', price: 1600, level: 2, r: 3.5, joy: 5, view: true },
-  photo:    { name: 'Photo Booth', cat: 'shop', art: 'photo', price: 1400, level: 2, r: 1.5, income: 8, joy: 3 },
-  hatchery: { name: 'Hatchery', cat: 'shop', art: 'hatchery', price: 2500, level: 1, r: 4, joy: 3, unique: true },
+  platform: { name: 'Viewing Deck', cat: 'shop', art: 'platform', price: 1600, level: 2, r: 3.5, view: true },
+  hatchery: { name: 'Hatchery', cat: 'shop', art: 'hatchery', price: 2500, level: 1, r: 4, unique: true },
 };
 export const DECOR_CATS = [
   { k: 'exhibit', name: 'Exhibits' },
   { k: 'nature', name: 'Nature' },
   { k: 'path', name: 'Paths' },
   { k: 'deco', name: 'Decor' },
-  { k: 'shop', name: 'Facilities' },
+  { k: 'shop', name: 'Buildings' },
 ];
-/** zoo star levels: appeal needed for each */
-export const ZOO_LEVELS = [0, 15, 60, 180, 450, 1000, 2200, 5000];
+/** zoo star levels: the income ($ a minute) needed for each */
+export const ZOO_LEVELS = [0, 35, 130, 380, 950, 2100, 4600, 10000];
 export const ZOO_LEVEL_NAMES = ['Roadside Pen', 'Little Zoo', 'Local Favourite', 'Dino Park', 'Famous Park', 'National Treasure', 'Wonder of the World', 'Legendary Sanctuary'];
 /** how much land you can build on: half-size of the buildable square per plot level */
 export const PLOTS = [{ half: 56, price: 0 }, { half: 72, price: 3000 }, { half: 88, price: 12000 }, { half: 100, price: 30000 }, { half: 112, price: 70000 }];

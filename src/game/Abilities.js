@@ -27,6 +27,7 @@ export class Abilities {
 
   /* ---------------- movement attacks ---------------- */
   smash(c) { this.charge(c, true); }
+  ram(c) { this.charge(c, true); this.g.fx.burst(c.pos.x, c.pos.y, c.pos.z, 'bubble', 30, { scale: 2 }); }
   charge(c, smash = false) {
     const G = this.g;
     G.riding.charging = 1.3; G.riding.cd = 2.2; c.anim.play(smash ? 'attack' : 'roar');
@@ -44,7 +45,8 @@ export class Abilities {
     if (this._smashFlag) for (const id in G.landmarks.gates) {
       const S = G.landmarks.gates[id];
       if (S.open || S.G.kind !== 'boulder') continue;
-      if (Math.hypot(S.G.x - at.x, S.G.z - at.z) < S.G.r + c.radius + 2.5) { G.act({ k: 'gate', id, how: c.spId }); G.riding.charging = 0; c.speed *= -0.3; }
+      if (!!S.G.under !== !!(c.swimmer || c.under)) continue;   // sunken rockfalls need a swimmer that rams; dry ones a walker that smashes
+      if (Math.hypot(S.G.x - at.x, S.G.z - at.z) < S.G.r + c.radius + 2.5 && (!S.G.under || Math.abs(c.pos.y - S.y) < 10)) { G.act({ k: 'gate', id, how: c.spId }); G.riding.charging = 0; c.speed *= -0.3; }
     }
   }
   tailwhip(c) {

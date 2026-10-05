@@ -7,7 +7,7 @@
    lava bomb) go out as events (event()), handled in onEvent().
 
    THE FRAME: time and weather -> you (on foot or riding) -> what you hold
-   (catching) -> the wild -> the zoo and its visitors -> world events and
+   (catching, fishing) -> the wild -> the zoo (income) -> world events and
    quests -> discovery, caves, fog of war -> effects, sky, water, streaming
    -> camera -> audio -> HUD -> network. */
 import * as THREE from '../../lib/three.module.js';
@@ -29,7 +29,8 @@ import { Riding } from './Riding.js';
 import { Abilities } from './Abilities.js';
 import { Wild } from './Wild.js';
 import { Zoo, habitatOK } from './Zoo.js';
-import { Visitors } from './Visitors.js';
+import { Fishing } from './Fishing.js';
+import { WaterSigns } from './WaterSigns.js';
 import { Events } from './Events.js';
 import { Quests } from './Quests.js';
 import { Build, exhibitPrice } from './Build.js';
@@ -100,12 +101,13 @@ export class Game {
     this.player = new Player(this, this.profile.look);
     this.cam = new CameraRig(this, this.camera);
     this.catching = new Catching(this);
+    this.fishing = new Fishing(this);
+    this.signs = new WaterSigns(this);
     this.tools = new Tools(this);
     this.riding = new Riding(this);
     this.abilities = new Abilities(this);
     this.wild = new Wild(this);
     this.zoo = new Zoo(this);
-    this.visitors = new Visitors(this);
     this.events = new Events(this);
     this.weather = this.events;      // .storm
     this.quests = new Quests(this);
@@ -178,7 +180,7 @@ export class Game {
     this.cam.yaw = 0; this.cam.pitch = 0.2;
     if (fresh) {
       const d = Object.values(this.W.creatures).find(r => r.sp === 'dryo');
-      this.profile.hotbar = ['tool:rope', d ? 'cr:' + d.uid : null, 'tool:binoculars', 'item:berries', 'item:meat', null, null, null, null, null];
+      this.profile.hotbar = ['tool:rope', 'tool:reedrod', d ? 'cr:' + d.uid : null, 'tool:binoculars', 'item:berries', 'item:fish', 'item:meat', null, null, null];
       this.profile.hotSeen = this.profile.hotbar.filter(Boolean);
       saveProfile(this.profile);
     }
@@ -186,7 +188,7 @@ export class Game {
     this.scatter.warm(this.player.pos);
     this.phase = 'play';
     this.cam.baseFov = this.profile.fov || 70;
-    if (fresh) setTimeout(() => { this.ui.banner('WELCOME TO YOUR ZOO, RANGER!', 'It is a bit small. Let us fix that: go and catch some dinosaurs.', 'good', 5); }, 800);
+    if (fresh) setTimeout(() => { this.ui.banner('WELCOME TO HOME ISLAND!', 'Your zoo is small - the world out there is not. Follow the arrow to the dock.', 'good', 5); }, 800);
     this.zoo.compute();
     Bus.emit('game:begin', { fresh });
   }
@@ -199,7 +201,7 @@ export class Game {
     if (this.riding.c) this.riding.recall(true);
     if (P.ride) this.riding.leaveSeat();
     this.catching.cancel(true);
-    P.pos.set(x, this.terrain.ground(x, z) + 0.2, z); P.vel.set(0, 0, 0);
+    P.pos.set(x, Math.max(this.terrain.ground(x, z), this.colliders.floorAt(x, z, 60, 0)) + 0.2, z); P.vel.set(0, 0, 0);   // onto a deck or bridge if there is one
     if (yaw != null) { P.yaw = yaw; this.cam.yaw = yaw + Math.PI; }
     this.inInterior = interior ? { id: interior, ...INTERIORS[interior] } : null;
     this.cam.focus.copy(P.pos);
@@ -241,7 +243,7 @@ export class Game {
   spOf(r) { return SP[r.sp]; }
   ownerOf(pid) { return pid === this.me ? this.packKey : (this.net.profiles.get(pid)?.key || pid); }
   crateCap(owner = this.packKey) { const base = UPGRADES.crate.levels[this.W.upg.crate || 0].cap; return base + (owner === this.packKey && this.player.mount?.has('carry') ? 8 : 0); }
-  crateUsed(owner = this.packKey) { return this.packCreatures(owner).reduce((s, r) => s + SIZE[SP[r.sp].size].crate, 0); }
+  crateUsed(owner = this.packKey) { return this.packCreatures(owner).reduce((s, r) => s + (r.starter || r.gift ? 0 : SIZE[SP[r.sp].size].crate), 0); }   // companions (Sprinkles, Shelly) walk beside you
   frozen() { return !!this.ui.panel || this.inv.open || this.build.active || this.chatOpen || this.player.koT > 0; }
   applySettings() {
     const p = this.profile;
@@ -286,7 +288,7 @@ export class Game {
       case 'caught': this._caught(a, pid); break;
       case 'release': { const r = W.creatures[a.uid]; if (r && (r.at === 'pack:' + owner || r.at === 'zoo' || r.at.startsWith('ex:'))) { delete W.creatures[a.uid]; this.zoo.syncCreatures(); toast((r.name || SP[r.sp].name) + ' trots off into the wild. Bye!'); } break; }
       case 'unload': {
-        const list = this.packCreatures(owner); if (!list.length) return fail('Your crate is empty.');
+        const list = this.packCreatures(owner).filter(r => !r.starter && !r.gift); if (!list.length) return fail('Your crate is empty.');
         for (const r of list) r.at = 'zoo';
         toast(list.length + ' animal' + (list.length > 1 ? 's' : '') + ' moved to the holding pen. Put them on show (Animals tab, or at an exhibit gate).', 'good');
         Bus.emit('zoo:unload', { n: list.length });
@@ -331,7 +333,7 @@ export class Game {
       case 'beacon': if (!W.beacons[a.id]) { W.beacons[a.id] = true; this.event({ k: 'banner', t: 'BEACON LIT', s: BEACONS.find(b => b.id === a.id).name + (W.upg.beacon ? ' - fast travel from the map (M).' : ' - buy Ranger Beacons at the station to fast travel here.'), kind: 'good' }); this.earn(150, null, false); } break;
       case 'gate': if (!W.gates[a.id]) { W.gates[a.id] = true; this.event({ k: 'gate', id: a.id }); const G0 = GATES.find(g => g.id === a.id); this.event({ k: 'banner', t: G0.kind === 'vines' ? 'THE VINES PART' : 'SMASHED THROUGH!', s: 'A new way is open.', kind: 'good' }); Bus.emit('gate:open', { id: a.id }); } break;
       case 'stun': { const c = this.wild.byId.get(a.id); if (c) this.wild.stun(c, a.t, a.knock); break; }
-      case 'roar': this.wild.roarAt(a.x, a.z, a.r, a.big); this.visitors.scare(new THREE.Vector3(a.x, 0, a.z), 30); break;
+      case 'roar': this.wild.roarAt(a.x, a.z, a.r, a.big); break;
       case 'call': this.wild.callAt(a.x, a.z, a.r); break;
       case 'aoe': this.wild.aoe(a.x, a.z, a.r, a.stun, a.knock); break;
       case 'photo': this._photo(a, pid); break;
@@ -354,6 +356,7 @@ export class Game {
         break;
       }
       case 'throw': break;
+      case 'skipTut': this.quests.skip(); break;
     }
     this.saveSoon();
   }
@@ -392,11 +395,14 @@ export class Game {
     Bus.emit('creature:caught', { sp: a.sp, v: a.v, isNew });
   }
   _buy(a, pid, fail, toast) {
-    const W = this.W, lv = this.zoo.level;
+    const W = this.W, lv = this.zoo.level, m0 = W.money;
+    try { this._buy0(a, fail, toast, W, lv); } finally { if (W.money < m0) W.stats.bought = (W.stats.bought || 0) + 1; }
+  }
+  _buy0(a, fail, toast, W, lv) {
     if (a.what === 'tool') { const T = TOOLS[a.id]; if (!T || W.tools[a.id]) return; if (T.level > lv) return fail('Needs a ' + T.level + '-star zoo.'); if (!this.spend(T.price)) return fail('Not enough money.'); W.tools[a.id] = 1; toast('Bought: ' + T.name + '! It is on your hotbar.', 'good'); this.audio.cash(); }
     if (a.what === 'item') { const I = ITEMS[a.id], n = a.n || 1; if (!I) return; if ((I.level || 0) > lv) return fail('Locked.'); if (!this.spend(I.price * n)) return fail('Not enough money.'); W.items[a.id] = (W.items[a.id] || 0) + n; this.audio.cash(); }
     if (a.what === 'upg') { const U = UPGRADES[a.id], l = W.upg[a.id] || 0, nx = U.levels[l + 1]; if (!nx) return; if (!this.spend(nx.price)) return fail('Not enough money.'); W.upg[a.id] = l + 1; toast(U.name + ' upgraded!', 'good'); this.audio.cash(); }
-    if (a.what === 'plot') { const np = PLOTS[(W.plot || 0) + 1]; if (!np) return; if (!this.spend(np.price)) return fail('Not enough money.'); W.plot = (W.plot || 0) + 1; this.zoo.rebuild(); this.visitors.grid = null; toast('Your zoo grew! More room to build.', 'good'); this.audio.cash(); this.event({ k: 'zoo' }); }
+    if (a.what === 'plot') { const np = PLOTS[(W.plot || 0) + 1]; if (!np) return; if (!this.spend(np.price)) return fail('Not enough money.'); W.plot = (W.plot || 0) + 1; this.zoo.rebuild(); toast('Your zoo grew! More room to build.', 'good'); this.audio.cash(); this.event({ k: 'zoo' }); }
   }
   _build(a, pid, fail) {
     const W = this.W;
@@ -414,7 +420,7 @@ export class Game {
       if (!this.spend(D.price)) return fail('Not enough money.');
       W.zoo.decor.push({ id: uid('d'), k: a.key, x: a.x, z: a.z, rot: a.rot || 0 });
     }
-    this.zoo.rebuild(); this.visitors.grid = null;
+    this.zoo.rebuild();
     this.event({ k: 'zoo' });
   }
   _sellBuild(a, pid, fail) {
@@ -429,7 +435,7 @@ export class Game {
     } else if (a.what === 'path') {
       const i = W.zoo.paths.findIndex(([x, z]) => x + ',' + z === a.id); if (i >= 0) { W.zoo.paths.splice(i, 1); this.earn(4, null, true); }
     }
-    this.zoo.rebuild(); this.visitors.grid = null; this.event({ k: 'zoo' });
+    this.zoo.rebuild(); this.event({ k: 'zoo' });
   }
   /** loot from the ground: what kind of thing comes out depends on where you are */
   _loot(biome, rich = 1) {
@@ -554,9 +560,8 @@ export class Game {
     // the world
     this.wild.update(dt);
     this.zoo.update(dt);
-    this.visitors.update(dt);
     this.events.update(dt);
-    this.quests.update();
+    this.quests.update(dt);
     this._hatchery();
     this._remotes(dt);
     for (let i = this.baitMeshes.length - 1; i >= 0; i--) { const b = this.baitMeshes[i]; b.t -= dt; if (b.t <= 0) { this.scene.remove(b.m); this.baitMeshes.splice(i, 1); } }
@@ -564,6 +569,7 @@ export class Game {
     this._portals(dt);
     // effects, sky, water, streaming
     const P = this.player.pos, cp = this.camera.position;
+    this.signs.update(dt);
     this.fx.update(dt);
     const biome = this.inInterior ? 'cave' : this.terrain.biome(P.x, P.z);
     const under = cp.y < -0.15 && this.terrain.ground(cp.x, cp.z) < cp.y;
@@ -583,7 +589,7 @@ export class Game {
       wind: (biome === 'peaks' || biome === 'tundra' ? 0.8 : 0.2) + (cp.y > 60 ? 0.6 : 0) + (this.player.mount?.flying ? 0.5 : 0) + this.events.w.storm * 0.6,
       rain: this.events.w.rain * (this.inCave ? 0 : 1), surf: this.terrain.ground(P.x, P.z) < 2 && biome !== 'swamp' ? 0.6 : 0,
       jungle: ['jungle', 'valley', 'swamp', 'skull'].includes(biome) ? 1 : 0, lava: Math.max(0, 1 - Math.hypot(P.x - VOLCANO.x, P.z - VOLCANO.z) / 350),
-      crowd: this.visitors.list.length ? clamp(1 - nearZoo / 120, 0, 1) * clamp(this.visitors.list.length / 20, 0.2, 1) : 0,
+      crowd: 0,
       creak: fightT, under: under ? 1 : 0, life: this.inCave ? 0 : ['meadow', 'jungle', 'elder', 'valley', 'swamp', 'isle'].includes(biome) ? 0.8 : 0.2,
       night: this.sky.state.night > 0.5, swamp: biome === 'swamp',
       mood: this.catching.fighting || this.events.active.raid || this.events.active.stampede || this.events.active.titan ? 'tense' : this.sky.state.night > 0.6 ? 'night' : 'calm',
@@ -683,7 +689,7 @@ export class Game {
     N.on.event = (pid, e) => this.onEvent(e, pid);
     N.on.player = (pid, s) => { let R = this.remotes.get(pid); if (!R) R = this._addRemote(pid); R.st = s; R.pos.set(s.x, s.y, s.z); };
     N.on.world = (w) => { if (w.wild) this.wild.applySnapshot(w.wild); if (w.tod != null && this.W) { this.W.tod = w.tod; this.W.day = w.day; this.W.weather.kind = w.wk; } };
-    N.on.saveIn = (s) => { const zk = JSON.stringify(s.zoo) + s.plot; const old = this.W ? JSON.stringify(this.W.zoo) + this.W.plot : ''; const crk = JSON.stringify(s.creatures); this.W = migrate(s); if (zk !== old) { this.zoo.rebuild(); this.visitors.grid = null; } else if (crk !== this._crk) this.zoo.syncCreatures(); this._crk = crk; };
+    N.on.saveIn = (s) => { const zk = JSON.stringify(s.zoo) + s.plot; const old = this.W ? JSON.stringify(this.W.zoo) + this.W.plot : ''; const crk = JSON.stringify(s.creatures); this.W = migrate(s); if (zk !== old) { this.zoo.rebuild(); } else if (crk !== this._crk) this.zoo.syncCreatures(); this._crk = crk; };
     N.on.join = (pid, p) => { this._addRemote(pid, p); this.ui.toast((p?.name || 'A friend') + ' joined the expedition!', 'good'); if (this.isHost) this.net.sendSave(this.W); };
     N.on.leave = (pid, p) => { const R = this.remotes.get(pid); if (R) { this.scene.remove(R.H.root); R.rope?.hide(); this.remotes.delete(pid); } this.riding.remoteMount(pid, null); this.ui.toast((p?.name || 'A friend') + ' left.', 'info'); };
     N.on.welcome = (d) => { this.W = migrate(d.save); };

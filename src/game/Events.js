@@ -6,7 +6,7 @@
      stampede   a panicked herd thunders past - dodge it, or rope one
      migration  pterosaur flocks overhead, ichthyosaur pods at sea
      eruption   Mount Cinder spits lava bombs; Emberbacks get bold
-     raid       predators come sniffing round your zoo; visitors panic
+     raid       predators swim over to Home Island and prowl round your zoo
      sea        something huge notices you swimming
      meteors    a night shower; one lands, and a STARBORN creature walks out
      golden     a golden-coloured animal is seen nearby (look for the pillar)
@@ -138,7 +138,7 @@ export class Events {
     for (const c of cs || []) { c.ai.st = 'hunt'; c.ai.t = 60; c.ai.target = G.me; c.event = 'raid'; c.ai.homeR = 20; }
     G.event({ k: 'banner', t: (S.herd[1] > 1 ? 'A PACK OF ' : 'A WILD ') + S.name.toUpperCase() + (S.herd[1] > 1 ? 'S' : '') + ' IS RAIDING THE ZOO!', s: 'Catch it before it scares off every visitor - or roar it away.', kind: 'bad' });
     G.audio.alarm();
-    this.active.raid = { t: 120, cs, tick: () => { for (const c of cs || []) if (!c.gone && Math.hypot(c.pos.x - ZOO.x, c.pos.z - ZOO.z) < Z.half + 20) G.visitors.scare(c.pos, 25); } };
+    this.active.raid = { t: 120, cs };
   }
   _sea() {
     const G = this.g, P = G.player.pos;
@@ -212,7 +212,6 @@ export class Events {
     delete G.W.creatures[r.uid];   // it is wild again until you catch it
     G.event({ k: 'banner', t: 'THE ' + SP[r.sp].name.toUpperCase() + ' HAS ESCAPED!', s: 'It was unhappy in there. Catch it again - and give it a proper Predator Paddock.', kind: 'bad' });
     G.audio.alarm();
-    G.visitors.scare(c.pos, 40);
     G.saveSoon();
   }
 

@@ -225,7 +225,7 @@ export class Zoo {
           const r = Math.random();
           if (r < 0.15) { A.st = 'feed'; break; }
           if (r < 0.28) { A.st = 'rest'; A.t = 8 + Math.random() * 10; break; }
-          if (r < 0.36 && this.crowdAt(E) > 0) { A.st = 'show'; A.t = 2.5; c.anim.play(sp.diet === 'carn' ? 'roar' : 'call'); this.g.audio.roar(c.pos, Math.min(1, c.height / 6) * 0.7, sp.id === 'para' ? 'honk' : sp.move === 'fly' ? 'screech' : 'roar'); this.g.visitors?.react(c, 'roar'); break; }
+          if (r < 0.36 && this.crowdAt(E) > 0) { A.st = 'show'; A.t = 2.5; c.anim.play(sp.diet === 'carn' ? 'roar' : 'call'); this.g.audio.roar(c.pos, Math.min(1, c.height / 6) * 0.7, sp.id === 'para' ? 'honk' : sp.move === 'fly' ? 'screech' : 'roar'); break; }
           const p = this._randIn(E, 0.75); A.tx = p.x; A.tz = p.z; A.t = 6 + Math.random() * 8;
         }
         const d = Math.hypot(A.tx - c.pos.x, A.tz - c.pos.z);
@@ -235,7 +235,7 @@ export class Zoo {
     if (this._clampIn(E, c.pos, m)) { c.speed *= 0.5; A.t = Math.min(A.t, 0.5); }
     c.pos.y = Math.max(c.pos.y, this.y);
   }
-  crowdAt(E) { return this.g.visitors ? this.g.visitors.watching(E.d.id) : 0; }
+  crowdAt(E) { return this.g.player.pos.distanceTo(new THREE.Vector3(E.d.x, this.y, E.d.z)) < E.half + 25 ? 1 : 0; }
 
   /* ---------------- happiness, appeal, level ---------------- */
   happiness(r) {
@@ -268,15 +268,13 @@ export class Zoo {
     // variety: every different species on show adds a little
     const kinds = new Set(Object.values(W.creatures).filter(r => r.at.startsWith('ex:')).map(r => r.sp)).size;
     appeal *= 1 + kinds * 0.03;
-    for (const d of W.zoo.decor) appeal += DECOR[d.k]?.joy || 0;
     this.appeal = Math.round(appeal);
-    let lv = 0; while (lv < ZOO_LEVELS.length - 1 && this.appeal >= ZOO_LEVELS[lv + 1]) lv++;
+    // the income: what the zoo earns by itself, every minute, wherever you are
+    this.income = Math.round(appeal * 2.5);
+    let lv = 0; while (lv < ZOO_LEVELS.length - 1 && this.income >= ZOO_LEVELS[lv + 1]) lv++;
     if (lv > (W.zooLevel || 0)) { W.zooLevel = lv; this.g.onZooLevel(lv); }
     this.level = lv;
-    this.visitorsWant = clamp(Math.round(3 + Math.pow(this.appeal, 0.62) * 0.55), 2, 46);
-    this.ticket = 4 + lv * 3;
-    this.rate = this.visitorsWant / 90 * (this.ticket + 4);   // $ per second, roughly, while away
-    return this.appeal;
+    return this.income;
   }
   get levelName() { return ZOO_LEVEL_NAMES[this.level]; }
   next() { return ZOO_LEVELS[this.level + 1] ?? null; }
@@ -304,11 +302,11 @@ export class Zoo {
         if (sp.temper === 'aggressive' && sp.size !== 'S' && r.happy < 0.4 && Math.random() < 0.25) { G.events.escape(r); break; }
       }
     }
-    // away from the zoo it still earns
-    const P = G.player.pos, away = Math.hypot(P.x - ZOO.x, P.z - ZOO.z) > 260;
-    if (G.isHost && away) {
-      this.incomeT += dt;
-      if (this.incomeT > 10) { const m = Math.round(this.rate * this.incomeT); this.incomeT = 0; if (m > 0) G.earn(m, null, true); }
+    // the animals earn, all the time (home or away): paid out every few seconds
+    if (G.isHost) {
+      this.acc = (this.acc || 0) + (this.income || 0) / 60 * dt;
+      this.payT = (this.payT || 0) + dt;
+      if (this.payT > 5 && this.acc >= 1) { const m = Math.floor(this.acc); this.acc -= m; this.payT = 0; G.earn(m, null, true); G.ui.payout?.(m); G.W.stats.zooPaid = (G.W.stats.zooPaid || 0) + 1; }
     }
   }
   /** keep the player out of fences except through the gate (colliders do it) */

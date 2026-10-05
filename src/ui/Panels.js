@@ -75,6 +75,7 @@ export class Panels {
     if (a === 'yes') { const y = this._yes; this.close(); if (y) y(); return; }
     if (a === 'no') return this.close();
     if (a === 'resume') return this.close();
+    if (a === 'skipTut') { G.act({ k: 'skipTut' }); return this.close(); }
     if (a === 'quit') { G.saveNow(); location.reload(); return; }
     if (a === 'set') { const p = G.profile; const key = t.dataset.k; if (key === 'invert' || key === 'shadows') p[key] = !p[key]; G.applySettings(); }
     setTimeout(() => this.render(), 80);
@@ -116,9 +117,11 @@ export class Panels {
     }
     if (tab === 'zoo') {
       const Z = G.zoo, nx = ZOO_LEVELS[Z.level + 1];
-      body += `<div class="zbig"><div class="zst">${'&#9733;'.repeat(Z.level)}<i>${'&#9733;'.repeat(7 - Z.level)}</i></div><b>${esc(ZOO_LEVEL_NAMES[Z.level])}</b><div class="zbar"><i style="width:${nx ? clamp((Z.appeal - ZOO_LEVELS[Z.level]) / (nx - ZOO_LEVELS[Z.level]) * 100, 0, 100) : 100}%"></i></div><span>Appeal ${Z.appeal}${nx ? ' / ' + nx + ' for the next star' : ''}</span></div>`;
-      body += `<p>Visitors: about <b>${Z.visitorsWant}</b> at a time &middot; Ticket <b>${money(Z.ticket)}</b> &middot; While you are away the zoo earns about <b>${money(Math.round(Z.rate * 60))}</b> a minute.</p>`;
-      body += `<p>Total visitors: ${W.stats.visitors || 0} &middot; Earned: ${money(W.stats.earned || 0)} &middot; Creatures caught: ${W.stats.caught || 0}</p>`;
+      body += `<div class="zbig"><div class="zst">${'&#9733;'.repeat(Z.level)}<i>${'&#9733;'.repeat(7 - Z.level)}</i></div><b>${esc(ZOO_LEVEL_NAMES[Z.level])}</b><div class="zbar"><i style="width:${nx ? clamp(((Z.income || 0) - ZOO_LEVELS[Z.level]) / (nx - ZOO_LEVELS[Z.level]) * 100, 0, 100) : 100}%"></i></div><span>Income <b>+${money(Z.income || 0)}/min</b>${nx ? ' - the next star at ' + money(nx) + '/min' : ''}</span></div>`;
+      body += `<p>Every animal on show earns money by itself, all the time - even while you are out exploring. Rarer, bigger, happier animals (in the right habitat) earn more; rare colours and babies earn extra.</p>`;
+      body += `<p>Earned so far: ${money(W.stats.earned || 0)} &middot; Creatures caught: ${W.stats.caught || 0}</p>`;
+      const top = Object.values(W.creatures).filter(r => r.at.startsWith('ex:')).map(r => ({ r, m: Math.round(SP[r.sp].appeal * 2.5 * (0.35 + (r.happy || 0.5) * 0.85) * (r.v ? Math.sqrt(VARIANTS[r.v].mult) : 1)) })).sort((a, b) => b.m - a.m).slice(0, 6);
+      if (top.length) body += '<h3>Top earners</h3>' + top.map(({ r, m }) => `<div class="srow"><img src="${G.inv.icons.creature(r.sp, r.v)}"><div class="sinfo"><b>${esc(r.name || SP[r.sp].name)}</b><span>about +${money(m)}/min &middot; happiness ${Math.round((r.happy || 0) * 100)}%</span></div></div>`).join('');
       const unlock = [];
       for (const [k, H] of Object.entries(HABITATS)) if (H.level === Z.level + 1) unlock.push(H.name + ' exhibits');
       for (const [k, D] of Object.entries(DECOR)) if (D.level === Z.level + 1) unlock.push(D.name);
@@ -224,7 +227,7 @@ export class Panels {
     const room = G.net.isOnline ? `<p class="room">Co-op room code: <b>${esc(G.net.room)}</b> &middot; ${G.net.count} player${G.net.count > 1 ? 's' : ''}</p>` : '';
     const sl = (k, min, max, step, label) => `<label class="set">${label}<input type="range" min="${min}" max="${max}" step="${step}" value="${p[k]}" data-k="${k}"></label>`;
     return `<div class="phead"><h2>Paused</h2></div><div class="pbody">${room}
-      <button class="wide" data-a="resume">Back to the game</button>
+      <button class="wide" data-a="resume">Back to the game</button>${G.quests.inTutorial ? '<button class="wide alt" data-a="skipTut">Skip the tutorial</button>' : ''}
       <h3>Settings</h3>${sl('sens', 0.2, 3, 0.05, 'Mouse sensitivity')}${sl('vol', 0, 1, 0.05, 'Volume')}${sl('music', 0, 1, 0.05, 'Music')}${sl('fov', 55, 95, 1, 'Field of view')}
       <label class="set">Invert mouse Y <button data-a="set" data-k="invert">${p.invert ? 'On' : 'Off'}</button></label>
       <label class="set">Shadows <button data-a="set" data-k="shadows">${p.shadows ? 'On' : 'Off'}</button></label>

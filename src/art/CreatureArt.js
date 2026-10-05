@@ -1066,7 +1066,36 @@ function scorpion(R, D, cols) {
     saddle: { bone: 'body', at: V(0, w * 0.75, 0), seats: [] }, mouth: { bone: 'body', at: V(0, 0, L * 0.3) }, dims: { len: L, hip: hgt, height: hgt + w, bw: w, bh: w * 0.5, headL: L * 0.1 } };
 }
 
-const PLANS = { theropod, quad, sauropod, ptero, marine, fish, dragonfly, millipede, scorpion };
+/* a spiral-shelled ammonite: the shell coils in the vertical plane, tentacles trail forward */
+function ammonite(R, D, cols) {
+  const L = D.len, top = cols.top, rib = cols.patCol || dark(top, 0.6);
+  R.bone('root', null, 0, 0, 0);
+  R.bone('body', 'root', 0, 0, 0);
+  const B = R.B('body');
+  // the coil: three rings shrinking inward, ribbed
+  const ribbed = (base) => q => (Math.sin(Math.atan2(q.y, q.z + L * 0.12) * 14) > 0.3 ? rib : base);
+  const tor = (r, t) => new THREE.TorusGeometry(0.5, t, 6, 22);
+  R.prim(tor(0.5, 0.2), M(0, 0.02 * L, -0.12 * L, 0, Math.PI / 2, 0, L * 0.95, L * 0.95, L * 0.95), top, B, { colorFn: ribbed(top) });
+  R.prim(tor(0.5, 0.22), M(0, 0.04 * L, -0.14 * L, 0, Math.PI / 2, 0, L * 0.55, L * 0.55, L * 0.75), light(top, 0.1), B, { colorFn: ribbed(light(top, 0.1)) });
+  R.prim(shapes.ico(1), M(0, 0.04 * L, -0.14 * L, 0, 0, 0, L * 0.22, L * 0.3, L * 0.3), dark(top, 0.85), B);
+  for (const s of [-1, 1]) R.prim(shapes.ico(1), M(s * L * 0.08, 0.02 * L, -0.12 * L, 0, 0, 0, L * 0.06, L * 0.62, L * 0.62), mix(top, rib, 0.3), B);
+  // head in the shell's mouth
+  const hp = V(0, -0.2 * L, 0.3 * L);
+  R.prim(shapes.ico(1), M(hp.x, hp.y, hp.z, 0, 0, 0, L * 0.3, L * 0.24, L * 0.26), cols.accent || '#c87a6a', B);
+  for (const s of [-1, 1]) eye(R, B, hp.clone().add(V(s * L * 0.13, L * 0.05, L * 0.04)), L * 0.05, s, { iris: '#1a1a1a', big: true, top });
+  const tail = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2, ox = Math.cos(a) * L * 0.08, oy = Math.sin(a) * L * 0.06;
+    const p0 = hp.clone().add(V(ox, oy, L * 0.1)), p1 = p0.clone().add(V(ox * 0.6, oy * 0.6 - L * 0.03, L * 0.2));
+    const nm = 'tn' + i; R.bone(nm, 'body', p0.x, p0.y, p0.z);
+    R.prim(shapes.cone(4), aim(p0, p1.clone().add(V(0, 0, L * 0.12)), L * 0.025), cols.accent || '#c87a6a', R.B(nm));
+    tail.push(nm);
+  }
+  return { plan: 'ammonite', legs: [], arms: [], roles: { root: 'root', hips: 'body', spine: [], neck: [], head: 'body', jaw: null, tail },
+    saddle: { bone: 'body', at: V(0, L * 0.5, 0), seats: [] }, mouth: { bone: 'body', at: hp.clone().add(V(0, 0, L * 0.2)) }, dims: { len: L, hip: 0, height: L, bw: L * 0.2, bh: L * 0.5, headL: L * 0.3 } };
+}
+
+const PLANS = { theropod, quad, sauropod, ptero, marine, fish, dragonfly, millipede, scorpion, ammonite };
 
 /* ---------------- templates (cached per species + variant) ---------------- */
 const CACHE = new Map();

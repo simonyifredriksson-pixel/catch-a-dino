@@ -198,6 +198,9 @@ export class Creature {
     }
     this.vel.copy(_v);
     this.pos.addScaledVector(_v, dt);
+    // rocks, sea-stacks and sunken pillars (a big swimmer does not fit through a small gap)
+    _w.set(this.pos.x, this.pos.y - this.height * 0.5, this.pos.z);
+    if (this.g.colliders.push(_w, this.radius, this.height)) { this.pos.x = _w.x; this.pos.z = _w.z; if (o.onBump) o.onBump(); }
     const g = T.ground(this.pos.x, this.pos.z);
     const bh = Math.max(0.3, this.height * 0.5);
     const top = -bh * 0.7, floor = g + bh;

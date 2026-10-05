@@ -28,6 +28,8 @@ export const ABILITIES = {
   swim:      { name: 'Swim',        key: 'passive', icon: 'wave',   desc: 'Swims fast at the surface.' },
   dive:      { name: 'Dive',        key: 'passive', icon: 'down',   desc: 'Dives underwater (CTRL down, SPACE up). Bring a Dive Helmet.' },
   deepdiver: { name: 'Deep Diver',  key: 'passive', icon: 'down',   desc: 'Can reach the bottom of the Trench.' },
+  ram:       { name: 'Ram',         key: 'F',       icon: 'fist',   desc: 'F to charge through the water: smashes sunken rockfalls and bowls other swimmers over.' },
+  nimble:    { name: 'Nimble',      key: 'passive', icon: 'wave',   desc: 'Small and quick: slips through narrow gaps between rocks that big swimmers cannot.' },
   echo:      { name: 'Echolocate',  key: 'F',       icon: 'ring',   desc: 'F to ping: shows creatures and treasure underwater around you.' },
   leap:      { name: 'Breach',      key: 'Space',   icon: 'up',     desc: 'SPACE at speed near the surface to leap clean out of the water.' },
   fly:       { name: 'Flight',      key: 'Space',   icon: 'wing',   desc: 'SPACE to take off and climb, CTRL to dive, W to fly where you look.' },

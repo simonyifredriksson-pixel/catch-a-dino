@@ -68,6 +68,9 @@ export class Tools {
     this.assist = blocked ? null : this._findAssist(range);
     // catching runs whatever is in your hand (a fight keeps going)
     G.catching.update(dt, input, blocked || P.koT > 0, T?.kind === 'catch' ? this.id : (G.catching.busy ? G.catching.toolId : null));
+    // the rod: cast, wait, strike (the fight itself is the catcher's)
+    if (T?.kind === 'rod') G.fishing.update(dt, input, blocked || P.koT > 0, this.id);
+    else if (G.fishing.busy) G.fishing.cancel();
     // zoom with binoculars / the camera
     const zoomWant = (B === 'scan' || B === 'photo') && input.btn(2) && !blocked ? 1 : 0;
     this.zoom = damp(this.zoom, zoomWant, 8, dt);

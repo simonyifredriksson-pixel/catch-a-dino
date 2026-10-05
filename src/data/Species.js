@@ -17,7 +17,7 @@
    speed              walk / run (m/s) for riding and AI;  turn (rad/s);  jump (m/s up)
    fight              how hard it fights on the rope (compared with a tool's rating)
    erratic, power     how it moves on the catch bar / how hard it tows you
-   appeal             base zoo appeal (visitors per minute it is worth)
+   appeal             how much it earns on show in your zoo (x$2.5 a minute)
    abilities          ids from data/Abilities.js - what it lets YOU do when ridden
    body               proportions for the body plan (art/CreatureArt.js)
    cols               colours: top, belly, accent, pattern, patCol, glow...
@@ -47,12 +47,12 @@ const B = (o) => o;
 export const SPECIES = [
   /* ---------------- Fernvale Meadows: where every zoo begins ---------------- */
   { id: 'compy', name: 'Compsognathus', sci: 'Compsognathus longipes', rarity: 'common', size: 'S', move: 'walk', habitat: 'meadow', diet: 'carn', temper: 'skittish',
-    where: ['meadow', 'jungle', 'beach', 'isle'], herd: [3, 6], ride: false, speed: { walk: 2.2, run: 9, turn: 6 }, fight: 0.35, erratic: 1.6, power: 0.3, appeal: 2, kg: [2, 3.5],
+    where: ['home', 'meadow', 'jungle', 'beach', 'isle'], herd: [3, 6], ride: false, speed: { walk: 2.2, run: 9, turn: 6 }, fight: 0.35, erratic: 1.6, power: 0.3, appeal: 2, kg: [2, 3.5],
     abilities: ['scout'], body: B({ plan: 'theropod', len: 1.0, hip: 0.3, feat: ['feathers', 'quills'], eye: 1.3, bw: 0.07, bh: 0.085 }),
     cols: { top: '#7cb342', belly: '#efe8b0', pattern: 'stripes', patCol: '#4a7a24', feather: '#f0a030', eye: '#e8a020' },
     lore: 'A chicken-sized hunter that travels in squabbling gangs. Steals sandwiches.', hint: 'Everywhere in the lowlands, in noisy little groups.' },
   { id: 'proto', name: 'Protoceratops', sci: 'Protoceratops andrewsi', rarity: 'common', size: 'S', move: 'walk', habitat: 'desert', diet: 'herb', temper: 'calm',
-    where: ['meadow', 'desert', 'beach'], herd: [1, 4], speed: { walk: 1.8, run: 6.5, turn: 3.2, jump: 0 }, fight: 0.6, erratic: 0.7, power: 0.8, appeal: 3, kg: [60, 90],
+    where: ['home', 'meadow', 'desert', 'beach'], herd: [1, 4], speed: { walk: 1.8, run: 6.5, turn: 3.2, jump: 0 }, fight: 0.6, erratic: 0.7, power: 0.8, appeal: 3, kg: [60, 90],
     abilities: ['dig', 'sturdy'], body: B({ plan: 'quad', herb: true, len: 2.0, hip: 0.62, shoulder: 0.55, headL: 0.5, head: 0.46, headH: 0.28, headW: 0.17, feat: ['frill'], frill: 0.62, neck: 0.12, tail: 0.6, bw: 0.24, bh: 0.24, legW: 0.07, headLow: 0.25, eye: 1.05 }),
     cols: { top: '#c8a26a', belly: '#f2e2c4', frill: '#e08a5a', frillPat: '#b0503a', rim: '#8a4a30', pattern: 'bands', patCol: '#a8844e', beak: '#6a5040' },
     lore: 'A sturdy little digger with a bony collar. Finds things nobody asked it to find.', hint: 'Grazing on the meadows and the edge of the desert. Dig spots love it.' },
@@ -117,7 +117,7 @@ export const SPECIES = [
     where: ['jungle', 'valley', 'skull'], herd: [1, 1], speed: { walk: 2.4, run: 11, turn: 1.5, jump: 0 }, fight: 3.0, erratic: 1.3, power: 5, appeal: 60, kg: [7000, 9500],
     abilities: ['roar', 'smash', 'charge', 'sturdy', 'carry'], body: B({ plan: 'theropod', len: 12.3, hip: 3.6, neck: 1.6, head: 1.6, headH: 0.95, headW: 0.5, neckRise: 0.45, arm: 0.8, armW: 0.12, bw: 0.95, bh: 1.15, tail: 5.4, legW: 0.36, fingers: 2, belly: 1.15, eye: 0.85 }),
     cols: { top: '#5a6a3a', belly: '#dccca4', pattern: 'stripes', patCol: '#3a4422', eye: '#f0b030' },
-    lore: 'The tyrant king. Visitors will queue for hours. So will its lunch.', hint: 'Rare in the deep jungle. Much more common in the Lost Valley.' },
+    lore: 'The tyrant king. Your zoo will never be the same. Neither will its lunch.', hint: 'Rare in the deep jungle. Much more common in the Lost Valley.' },
 
   /* ---------------- The Giant River & the Murkmire ---------------- */
   { id: 'sarco', name: 'Sarcosuchus', sci: 'Sarcosuchus imperator', rarity: 'rare', size: 'L', move: 'amph', habitat: 'swamp', diet: 'carn', temper: 'aggressive',
@@ -172,7 +172,7 @@ export const SPECIES = [
     cols: { top: '#e8e4dc', belly: '#f8f6f0', membrane: '#c8885a', crest: '#d84a2a', beak: '#e8c060', eye: '#2a1a10' },
     lore: 'The classic sky-lizard. Glides for hours over the sea, looking for fish.', hint: 'Circling the Spine Peaks and the coast.' },
   { id: 'dimorph', name: 'Dimorphodon', sci: 'Dimorphodon macronyx', rarity: 'common', size: 'S', move: 'fly', habitat: 'aviary', diet: 'carn', temper: 'skittish',
-    where: ['beach', 'isle', 'jungle', 'skull'], herd: [2, 4], ride: false, speed: { walk: 1.5, run: 3, fly: 13, turn: 3 }, fight: 0.5, erratic: 2.0, power: 0.4, appeal: 4, kg: [1.5, 2.5], flyH: [8, 22],
+    where: ['home', 'beach', 'isle', 'jungle', 'skull', 'lake'], herd: [2, 4], ride: false, speed: { walk: 1.5, run: 3, fly: 13, turn: 3 }, fight: 0.5, erratic: 2.0, power: 0.4, appeal: 4, kg: [1.5, 2.5], flyH: [8, 22],
     abilities: ['scout'], body: B({ plan: 'ptero', span: 1.45, body: 0.26, neck: 0.12, head: 0.24, headH: 0.12, feat: ['teeth', 'longtail'] }),
     cols: { top: '#3a3a4a', belly: '#6a6a7a', membrane: '#5a4a6a', crest: '#f0c030', beak: '#f0c030', eye: '#f0c030' },
     lore: 'A puffin-faced little flyer with a big head and bigger opinions.', hint: 'Squabbling over the beaches and islands.' },
@@ -226,37 +226,70 @@ export const SPECIES = [
     cols: { top: '#8a7a5a', belly: '#d8ccb0', armor: '#6a5a44', club: '#5a4a3a', horn: '#e0d4b8', eye: '#3a2a1a', beak: '#5a4a3a' },
     lore: 'A walking fortress with a sledgehammer for a tail.', hint: 'Plodding through meadows, forest and the volcano foothills.' },
 
+
+  /* ---------------- the Glass Lagoon: fish these up ---------------- */
+  { id: 'coel', name: 'Coelacanth', sci: 'Latimeria prisca', rarity: 'common', size: 'S', move: 'swim', habitat: 'aquatic', diet: 'fish', temper: 'skittish',
+    where: ['lake', 'ocean', 'river', 'swamp'], herd: [1, 3], ride: false, speed: { swim: 5, turn: 2.4 }, fight: 0.5, erratic: 1.2, power: 0.4, appeal: 3, kg: [40, 90], depth: [1, 25],
+    abilities: ['swim', 'dive'], dive: 30, body: B({ plan: 'fish', len: 1.6, bw: 0.2, bh: 0.28, eye: 1.6, feat: ['armor'] }),
+    cols: { top: '#3a5a8a', belly: '#9ab0c8', plate: '#4a6a9a', fin: '#2a4a7a', pattern: 'spots', patCol: '#c8d8e8', eye: '#e8d040' },
+    lore: 'A living fossil with lobed fins. It was old when the dinosaurs were young.', hint: 'Everywhere in the lagoon. Cast your rod off the dock.' },
+  { id: 'ammonite', name: 'Ammonite', sci: 'Ammonites giganteus', rarity: 'common', size: 'S', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'skittish',
+    where: ['lake', 'ocean'], herd: [2, 4], ride: false, speed: { swim: 3, turn: 2 }, fight: 0.45, erratic: 0.9, power: 0.3, appeal: 3, kg: [8, 20], depth: [1, 20],
+    abilities: ['swim'], dive: 20, body: B({ plan: 'ammonite', len: 1.0 }),
+    cols: { top: '#e8c8a0', belly: '#f4e4d0', patCol: '#a86a3a', accent: '#c87a6a', eye: '#1a1a1a' },
+    lore: 'A squid in a spiral shell. Jets backwards when it is startled, which is always.', hint: 'Bobbing in the shallows of the lagoon.' },
+  { id: 'eury', name: 'Sea Scorpion', sci: 'Jaekelopterus rhenaniae', rarity: 'uncommon', size: 'S', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'territorial',
+    where: ['lake', 'swamp', 'river'], herd: [1, 2], ride: false, speed: { swim: 5, turn: 3 }, fight: 0.8, erratic: 1.6, power: 0.7, appeal: 6, kg: [15, 30], depth: [1, 12],
+    abilities: ['swim', 'sting'], dive: 15, body: B({ plan: 'scorpion', len: 1.8 }),
+    cols: { top: '#8a5a3a', accent: '#c87a4a', sting: '#e0a050' },
+    lore: 'A scorpion the length of a canoe that lives underwater. Nobody swims near it twice.', hint: 'Lurking on the lagoon floor and in the swamp channels.' },
+  { id: 'notho', name: 'Nothosaurus', sci: 'Nothosaurus mirabilis', rarity: 'uncommon', size: 'M', move: 'swim', habitat: 'aquatic', diet: 'fish', temper: 'skittish',
+    where: ['lake', 'river', 'swamp'], herd: [1, 3], speed: { swim: 14, turn: 2.8 }, fight: 1.0, erratic: 1.6, power: 1.0, appeal: 9, kg: [80, 160], depth: [1, 15],
+    abilities: ['swim', 'dive', 'nimble', 'leap'], dive: 30, body: B({ plan: 'marine', len: 3.4, bw: 0.3, bh: 0.26, torso: 1.1, tail: 1.3, neck: 0.6, neckBones: 1, head: 0.55, headH: 0.2, headW: 0.14, snout: 1.4, flipF: 0.6, flipH: 0.5, flat: 0.15 }),
+    cols: { top: '#5a8a6a', belly: '#e8eee0', pattern: 'stripes', patCol: '#3a6a4a', eye: '#e0a020' },
+    lore: 'A sleek little sea reptile. Small enough to slip through gaps nothing else can.', hint: 'Darting round the lagoon and up the rivers. Fast - sneak up, or fish one.' },
+  { id: 'helico', name: 'Helicoprion', sci: 'Helicoprion bessonovi', rarity: 'rare', size: 'M', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'territorial',
+    where: ['lake', 'ocean', 'deep'], herd: [1, 1], fin: true, speed: { swim: 13, turn: 2 }, fight: 1.6, erratic: 1.8, power: 1.6, appeal: 20, kg: [300, 600], depth: [4, 60],
+    abilities: ['swim', 'dive'], dive: 70, body: B({ plan: 'fish', len: 4.2, bw: 0.42, bh: 0.5, eye: 1.1 }),
+    cols: { top: '#6a5a7a', belly: '#e0dce8', fin: '#4a3a5a', pattern: 'dapple', patCol: '#4a3a5a', eye: '#f0d040' },
+    lore: 'A shark with a buzz-saw of teeth curled up in its lower jaw. Ask it nicely.', hint: 'The deeper middle of the lagoon, and the open sea.' },
+  { id: 'xiphac', name: 'Xiphactinus', sci: 'Xiphactinus audax', rarity: 'rare', size: 'L', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'aggressive',
+    where: ['lake', 'ocean'], herd: [1, 1], fin: true, speed: { swim: 19, turn: 2 }, fight: 2.0, erratic: 1.8, power: 2.4, appeal: 22, kg: [400, 700], depth: [3, 40],
+    abilities: ['swim', 'dive', 'leap'], dive: 50, body: B({ plan: 'fish', len: 5.5, bw: 0.45, bh: 0.7, eye: 1.2 }),
+    cols: { top: '#5a7a9a', belly: '#eef2f4', fin: '#3a5a7a', eye: '#f0c040' },
+    lore: 'A bulldog fish with an underbite of fangs. Leaps clean out of the water when hooked.', hint: 'Hunting the lagoon - it breaks the surface when it chases fish.' },
+
   /* ---------------- Coast, ocean and the deep ---------------- */
   { id: 'archelon', name: 'Archelon', sci: 'Archelon ischyros', rarity: 'common', size: 'L', move: 'swim', habitat: 'aquatic', diet: 'fish', temper: 'calm',
-    where: ['ocean', 'beach', 'isle'], herd: [1, 2], speed: { walk: 0.8, run: 2, swim: 9, turn: 1.6 }, fight: 1.1, erratic: 0.6, power: 1.8, appeal: 9, kg: [1800, 2200], depth: [1, 8],
+    where: ['lake', 'ocean', 'beach', 'isle'], herd: [1, 2], speed: { walk: 0.8, run: 2, swim: 9, turn: 1.6 }, fight: 1.1, erratic: 0.6, power: 1.8, appeal: 9, kg: [1800, 2200], depth: [1, 8],
     abilities: ['swim', 'dive', 'sturdy'], dive: 25, body: B({ plan: 'marine', len: 4.2, bw: 0.75, bh: 0.35, torso: 2, tail: 0.6, neck: 0.5, head: 0.7, headH: 0.38, headW: 0.26, flipF: 2.2, flipH: 1.1, feat: ['shell', 'beak'], flat: 0.15, bigEye: true }),
     cols: { top: '#8aa090', belly: '#e0e0c8', shell: '#4a6a5a', beak: '#c8b080', eye: '#2a1a10' },
-    lore: 'A sea turtle the size of a car. Slow, kind, and an excellent boat.', hint: 'Paddling off Sunbeach Coast and around the islands.' },
+    lore: 'A sea turtle the size of a car. Slow, kind, and an excellent boat.', hint: 'Paddling round the Glass Lagoon and the islands. Fish one up, or rope one at the surface.' },
   { id: 'ichthy', name: 'Ichthyosaurus', sci: 'Ichthyosaurus communis', rarity: 'uncommon', size: 'M', move: 'swim', habitat: 'aquatic', diet: 'fish', temper: 'skittish',
-    where: ['ocean', 'deep'], herd: [2, 5], speed: { swim: 18, turn: 2.6 }, fight: 1.3, erratic: 2.0, power: 1.4, appeal: 12, kg: [90, 160], depth: [2, 30],
+    where: ['lake', 'ocean', 'deep'], herd: [2, 5], fin: true, speed: { swim: 18, turn: 2.6 }, fight: 1.3, erratic: 2.0, power: 1.4, appeal: 12, kg: [90, 160], depth: [2, 30],
     abilities: ['swim', 'dive', 'echo', 'leap'], dive: 60, body: B({ plan: 'marine', len: 3.3, bw: 0.32, bh: 0.36, torso: 1.1, tail: 1.2, neck: 0.15, head: 0.7, headH: 0.26, headW: 0.16, snout: 1.6, flipF: 0.6, flipH: 0.35, feat: ['crescent', 'dorsal'], fin: 0.6, dorsal: 0.35, bigEye: true, eye: 1.4 }),
     cols: { top: '#4a6ea0', belly: '#e8eef4', pattern: 'dapple', patCol: '#3a5a88', eye: '#1a1a1a' },
-    lore: 'The dolphin of the dinosaur age. Pods leap the waves for fun.', hint: 'Pods leaping in the open sea.' },
+    lore: 'The dolphin of the dinosaur age. Pods leap the waves for fun.', hint: 'Pods leaping in the lagoon and the open sea. Fast - you need a fast swimmer to chase one.' },
   { id: 'plesio', name: 'Plesiosaurus', sci: 'Elasmosaurus platyurus', rarity: 'rare', size: 'L', move: 'swim', habitat: 'aquatic', diet: 'fish', temper: 'calm',
-    where: ['ocean', 'deep', 'river'], herd: [1, 2], speed: { swim: 12, turn: 1.6 }, fight: 2.0, erratic: 1.1, power: 2.6, appeal: 26, kg: [2000, 3000], depth: [3, 40],
+    where: ['lake', 'ocean', 'deep', 'river'], herd: [1, 2], speed: { swim: 12, turn: 1.6 }, fight: 2.0, erratic: 1.1, power: 2.6, appeal: 26, kg: [2000, 3000], depth: [3, 40],
     abilities: ['swim', 'dive', 'carry'], dive: 90, body: B({ plan: 'marine', len: 10, bw: 0.85, bh: 0.6, torso: 3, tail: 1.6, neck: 4.6, neckBones: 5, head: 0.65, headH: 0.32, headW: 0.24, flipF: 2.2, flipH: 1.9, flat: 0.2 }),
     cols: { top: '#4a7a8a', belly: '#e0e8e0', pattern: 'spots', patCol: '#34606e', eye: '#e0a020' },
-    lore: 'A snake threaded through a turtle, everyone says. It is much prettier than that.', hint: 'Gliding through the open sea - and, rumour says, up the Giant River.' },
+    lore: 'A snake threaded through a turtle, everyone says. It is much prettier than that.', hint: 'Rare in the lagoon, more common out at sea and up the rivers. Look for a long neck.' },
   { id: 'dunk', name: 'Dunkleosteus', sci: 'Dunkleosteus terrelli', rarity: 'rare', size: 'L', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'aggressive',
     where: ['deep', 'ocean'], herd: [1, 1], speed: { swim: 10, turn: 1.6 }, fight: 2.4, erratic: 1.2, power: 3, appeal: 24, kg: [1000, 1500], depth: [20, 120],
-    abilities: ['swim', 'dive', 'deepdiver', 'sturdy'], dive: 200, body: B({ plan: 'fish', len: 6, bw: 0.6, bh: 0.75, feat: ['armor'], eye: 1.3 }),
+    abilities: ['swim', 'dive', 'deepdiver', 'ram', 'sturdy'], dive: 200, body: B({ plan: 'fish', len: 6, bw: 0.6, bh: 0.75, feat: ['armor'], eye: 1.3 }),
     cols: { top: '#4a5a6a', belly: '#c8ccc8', plate: '#8a8070', fin: '#3a4a58', eye: '#e0c040' },
-    lore: 'An armoured fish with bone shears for a mouth. Older than the dinosaurs.', hint: 'Prowling the reef drop-off and the deep.' },
+    lore: 'An armoured fish with bone shears for a mouth. Older than the dinosaurs.', hint: 'Out past the lagoon where the sea turns dark blue.' },
   { id: 'mosa', name: 'Mosasaurus', sci: 'Mosasaurus hoffmannii', rarity: 'epic', size: 'XL', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'aggressive',
     where: ['deep', 'ocean'], herd: [1, 1], speed: { swim: 17, turn: 1.4 }, fight: 3.3, erratic: 1.4, power: 5.4, appeal: 70, kg: [12000, 15000], depth: [6, 120],
-    abilities: ['swim', 'dive', 'deepdiver', 'roar', 'leap', 'carry'], dive: 220, body: B({ plan: 'marine', len: 16, bw: 1.15, bh: 1.2, torso: 5, tail: 6.5, neck: 0.8, head: 2.6, headH: 1.0, headW: 0.65, flipF: 2.2, flipH: 1.8, feat: ['fluke'], fin: 2.4, fierce: true }),
+    abilities: ['swim', 'dive', 'deepdiver', 'ram', 'roar', 'leap', 'carry'], dive: 220, body: B({ plan: 'marine', len: 16, bw: 1.15, bh: 1.2, torso: 5, tail: 6.5, neck: 0.8, head: 2.6, headH: 1.0, headW: 0.65, flipF: 2.2, flipH: 1.8, feat: ['fluke'], fin: 2.4, fierce: true }),
     cols: { top: '#3a5a7a', belly: '#dce4e4', pattern: 'stripes', patCol: '#2a4460', eye: '#f0c040' },
     lore: 'The tyrant of the sea. When the water goes very calm, look down.', hint: 'Hunting the deep water past the reef.' },
   { id: 'megalodon', name: 'Megalodon', sci: 'Otodus megalodon', rarity: 'legendary', size: 'XL', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'aggressive',
-    where: ['deep'], when: { den: 'trench' }, herd: [1, 1], speed: { swim: 22, turn: 1.3 }, fight: 4.5, erratic: 1.5, power: 7, appeal: 150, kg: [40000, 55000], depth: [20, 220],
-    abilities: ['swim', 'dive', 'deepdiver', 'carry', 'sturdy'], dive: 300, body: B({ plan: 'fish', len: 17, bw: 1.8, bh: 2.1, eye: 0.8 }),
+    where: ['deep'], when: { den: 'trench' }, herd: [1, 1], fin: true, speed: { swim: 22, turn: 1.3 }, fight: 4.5, erratic: 1.5, power: 7, appeal: 150, kg: [40000, 55000], depth: [20, 220],
+    abilities: ['swim', 'dive', 'deepdiver', 'ram', 'carry', 'sturdy'], dive: 300, body: B({ plan: 'fish', len: 17, bw: 1.8, bh: 2.1, eye: 0.8 }),
     cols: { top: '#5a6a7a', belly: '#f2f2f0', fin: '#4a5a6a', eye: '#101010' },
-    lore: 'The biggest shark that ever lived. It does not live in a tank. Usually.', hint: 'Somewhere over the Trench, in the deepest blue south of the islands.' },
+    lore: 'The biggest shark that ever lived. It does not live in a tank. Usually.', hint: 'Somewhere over the Trench, far out in the western sea. Watch for a fin.' },
 
   /* ---------------- secrets ---------------- */
   { id: 'crystal', name: 'Crystalback', sci: 'Lithostegus prismaticus', rarity: 'epic', size: 'L', move: 'walk', habitat: 'cave', diet: 'herb', temper: 'calm',
@@ -276,7 +309,7 @@ export const SPECIES = [
     lore: 'A sauropod so old that moss and stone grew on it. Walks the land once in a long while.', hint: 'Seen only during the Titan Walk - when the ground shakes for no reason. Listen.' },
   { id: 'leviathan', name: 'Abyssal Leviathan', sci: 'Abyssosaurus profundus', rarity: 'mythic', size: 'XL', move: 'swim', habitat: 'aquatic', diet: 'carn', temper: 'territorial',
     where: ['deep'], when: { den: 'trench', night: true }, herd: [1, 1], speed: { swim: 16, turn: 1.0 }, fight: 6, erratic: 1.7, power: 9, appeal: 420, kg: [60000, 80000], depth: [80, 230],
-    abilities: ['swim', 'dive', 'deepdiver', 'glow', 'carry', 'sturdy'], dive: 400, body: B({ plan: 'marine', len: 30, bw: 1.6, bh: 1.7, torso: 8, tail: 13, neck: 3, neckBones: 1, head: 3.6, headH: 1.4, headW: 0.95, flipF: 3.6, flipH: 2.6, feat: ['fluke', 'lure'], fin: 3.6, fierce: true }),
+    abilities: ['swim', 'dive', 'deepdiver', 'ram', 'glow', 'carry', 'sturdy'], dive: 400, body: B({ plan: 'marine', len: 30, bw: 1.6, bh: 1.7, torso: 8, tail: 13, neck: 3, neckBones: 1, head: 3.6, headH: 1.4, headW: 0.95, flipF: 3.6, flipH: 2.6, feat: ['fluke', 'lure'], fin: 3.6, fierce: true }),
     cols: { top: '#1a2a3a', belly: '#2a3a50', pattern: 'dapple', patCol: '#12202e', glow: '#40ffd0', glowPat: 'spots', eye: '#40ffd0' },
     lore: 'A light in the dark at the bottom of the Trench. Then a much bigger light.', hint: 'At NIGHT, at the very bottom of the Trench. You will need a deep diver.' },
 ];

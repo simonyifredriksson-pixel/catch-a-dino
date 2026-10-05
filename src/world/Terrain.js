@@ -14,7 +14,8 @@
 import * as THREE from '../../lib/three.module.js';
 import { Noise2D } from '../core/Noise.js';
 import { clamp, lerp, smoothstep, hash3 } from '../core/Util.js';
-import { BIOMES, REGIONS, ZOO, RIVER, MESAS, VOLCANO, VALLEY, ISLANDS, TRENCH, WORLD_HALF, WHITEOUT } from '../data/Biomes.js';
+import { BIOMES, REGIONS, ZOO, RIVERS, MESAS, VOLCANO, VALLEY, ISLANDS, TRENCH, WORLD_HALF, WHITEOUT, HOME, LAGOON } from '../data/Biomes.js';
+const wrapA = a => { a = (a + Math.PI) % (Math.PI * 2); if (a < 0) a += Math.PI * 2; return a - Math.PI; };
 
 export const CELL = 6;
 export const N = Math.round(WORLD_HALF * 2 / CELL) + 1;
@@ -53,9 +54,15 @@ export class Terrain {
   }
 
   /* ---------------- the shape ---------------- */
-  /** the Lost Valley's pass: a narrow canyon from the valley south into the jungle */
-  static PASS = [[-150, -500], [-130, -455], [-100, -405]];
+  /** the Lost Valley's pass: a narrow canyon from the valley south-east toward the Elderwood */
+  static PASS = [[VALLEY.x + 50, VALLEY.z + 95], [VALLEY.x + 95, VALLEY.z + 150], [VALLEY.x + 150, VALLEY.z + 205]];
 
+  /** where the mainland starts at bearing th (0 north, +pi/2 east), and how open to the sea that side is */
+  shoreAt(th) {
+    const n = this.n, nA = n.noise(Math.cos(th) * 2.2 + 5, Math.sin(th) * 2.2 - 3), nB = this.n2.noise(Math.cos(th) * 6 + 1, Math.sin(th) * 6 + 4);
+    const open = Math.exp(-Math.pow(wrapA(th + Math.PI / 2) / 0.75, 2));
+    return { rc: LAGOON.r + 70 * nA + 30 * nB + open * 1300, open };
+  }
   _raw(x, z) {
     const n = this.n, n2 = this.n2;
     const wx = x + n.noise(x * 0.0021, z * 0.0021) * 70, wz = z + n.noise(x * 0.0021 + 50, z * 0.0021 - 30) * 70;
@@ -64,8 +71,8 @@ export class Terrain {
     const dn = Math.sin((x * 0.6 + z * 0.8) * 0.045 + n.noise(x * 0.01, z * 0.01) * 2.5) * 0.6 + n2.fbm(x * 0.015, z * 0.015, 2) * 0.4;
     let sw = 0, sh = 0;
     let wBest = 0, bBest = 'meadow';
-    for (const [b, cx, cz, r, h, a, kind] of REGIONS) {
-      const sx = b === 'peaks' ? 1.6 : 1;
+    for (const [b, cx, cz, r, h, a, kind, sx = 1] of REGIONS) {
+      if (r < 2) continue;
       const d = Math.hypot((wx - cx) / sx, wz - cz) / r;
       const w = Math.exp(-d * d * 2.4) + 1e-6;
       let det;
@@ -77,21 +84,37 @@ export class Terrain {
       sw += w; sh += w * (h + det);
       if (w > wBest) { wBest = w; bBest = b; }
     }
-    let h = sh / sw;
+    const landH = sh / sw;
     let biome = bBest;
-    // coastline: the south coast, and the sea all round the edges
-    const s = (z - (560 + 60 * n.noise(x * 0.004, 7.7) + 30 * n2.noise(x * 0.012, 3.1))) / 70;
-    const r = Math.hypot(x / 1060, (z + 160) / 1010) + n.noise(x * 0.003 + 9, z * 0.003) * 0.05;
-    const land = Math.min(1 - smoothstep(-1, 1, s), 1 - smoothstep(0.92, 1.03, r));
-    let sea = -6 - 26 * smoothstep(560, 780, z) - 50 * smoothstep(760, 900, z) - 40 * smoothstep(0.98, 1.12, r) + f * 3;
-    // the trench
+    // ---- the mainland begins at the lagoon's far shore (open to the sea in the west)
+    const d0 = Math.hypot(x - HOME.x, z - HOME.z), th = Math.atan2(x - HOME.x, -(z - HOME.z));
+    const { rc, open } = this.shoreAt(th);
+    const main = smoothstep(rc - 30, rc + 40, d0);
+    const ramp = smoothstep(rc - 10, rc + 170, d0);
+    const mainH = 2.2 + (landH - 2.2) * ramp + f * 2 * ramp;
+    // ---- the water: the lagoon is shallow by the shores and deepest mid-way; the open sea gets deep fast
+    let sea = -5 - 19 * smoothstep(HOME.r + 15, HOME.r + 120, d0) * (1 - smoothstep(Math.min(rc, LAGOON.r + 60) - 130, Math.min(rc, LAGOON.r + 60) - 20, d0)) + f * 3;
+    const ocean = -22 - 70 * smoothstep(LAGOON.r + 150, 950, d0) + f * 6;
+    const toSea = smoothstep(LAGOON.r - 40, LAGOON.r + 220, d0) * smoothstep(0.15, 0.6, open);
+    sea = lerp(sea, ocean, toSea);
+    const edge = Math.max(Math.abs(x), Math.abs(z));
+    sea -= 40 * smoothstep(1100, 1190, edge);
     const td = Math.hypot((x - TRENCH.x) / TRENCH.a, (z - TRENCH.z) / TRENCH.b);
     if (td < 1.4) sea = lerp(sea, TRENCH.depth + f * 10, smoothstep(1.4, 0.55, td));
-    // sunken ruins sit on a raised reef shelf
-    h = lerp(sea, h, land);
-    if (land < 0.5) biome = h < -45 ? 'deep' : 'ocean';
-    else if (land < 0.985 && h < 3.2 && h > -3 && biome !== 'swamp') biome = 'beach';
+    let h = lerp(sea, mainH, main);
+    if (main < 0.5) biome = toSea > 0.5 ? (h < -45 ? 'deep' : 'ocean') : 'lake';
+    else if (main < 0.985 && h < 3.2 && h > -3 && biome !== 'swamp') biome = 'beach';
     if (biome === 'beach' && h > 3.2) biome = 'meadow';
+    // ---- Home Island: a big round island in the middle of the lagoon
+    {
+      const di = d0 + n.noise(x * 0.009 + 11, z * 0.009) * 24;
+      const isl = smoothstep(HOME.r + 12, HOME.r - 42, di);
+      if (isl > 0) {
+        const ih = 2.5 + 10 * smoothstep(HOME.r, HOME.r * 0.45, di) + f * 3 + rd * 5 * smoothstep(HOME.r * 0.95, HOME.r * 0.55, di);
+        h = lerp(h, Math.max(h, ih), isl);
+        if (isl > 0.5) biome = h < 3.2 ? 'beach' : 'home';
+      }
+    }
     // islands
     for (const I of ISLANDS) {
       const d = Math.hypot(x - I.x, z - I.z) / I.r;
@@ -103,18 +126,18 @@ export class Terrain {
       }
     }
     // Skull Isle: a jagged crown of rock in the middle
-    { const d = Math.hypot(x + 440, z - 880); if (d < 60) h += Math.pow(smoothstep(60, 10, d), 2) * (28 + rd * 30); }
+    { const S = ISLANDS[1], d = Math.hypot(x - S.x, z - S.z); if (d < 60) h += Math.pow(smoothstep(60, 10, d), 2) * (28 + rd * 30); }
     // the zoo plateau: a flat, rounded square
     {
       const dx = Math.max(0, Math.abs(x - ZOO.x) - ZOO.half), dz = Math.max(0, Math.abs(z - ZOO.z) - ZOO.half);
       const d = Math.hypot(dx, dz);
       h = lerp(ZOO.y, h, smoothstep(0, 70, d));
-      if (d < 4) biome = 'meadow';
+      if (d < 4) biome = 'home';
     }
-    // the Giant River and its gorge
-    {
-      const { d, t } = polyDist(x, z, RIVER);
-      const w = lerp(22, 75, t * t) + n.noise(x * 0.01, z * 0.01) * 6;
+    // rivers: from the regions down into the lagoon (deep enough to swim up)
+    for (const RV of RIVERS) {
+      const { d, t } = polyDist(x, z, RV.pts);
+      const w = lerp(RV.w0, RV.w1, t * t) + n.noise(x * 0.01, z * 0.01) * 5;
       const bank = 14 + 30 * (1 - t) + Math.max(0, h) * 0.25;
       if (d < w + bank) {
         const bed = -4.5 - 3 * smoothstep(w, 0, d);
@@ -237,7 +260,7 @@ export class Terrain {
     const bn = BIOME_IDS[this.B[clamp(i + 3, 0, N - 1) * N + clamp(j + 2, 0, N - 1)]];
     if (bn !== b) out.lerp(_c2.set(BIOMES[bn].ground[0]), 0.35);
     const nz = this.n.noise(x * 0.02, z * 0.02);
-    if (b === 'meadow' || b === 'jungle' || b === 'valley' || b === 'isle') {
+    if (b === 'meadow' || b === 'home' || b === 'jungle' || b === 'valley' || b === 'isle') {
       out.offsetHSL(nz * 0.03, 0, nz * 0.04);
       // big soft patches: darker clover, sun-bleached grass, the odd flower field
       const pz = this.n2.noise(x * 0.008 + 3, z * 0.008 - 7);
@@ -253,7 +276,7 @@ export class Terrain {
     if (b === 'swamp' && h < 1.2) out.lerp(_c2.set('#4a5530'), 0.6);
     // cliffs: rock, and in the desert, layered red strata
     if (sl > 0.75 && h > 1) {
-      if (b === 'desert' || (Math.abs(x + 640) < 330 && Math.abs(z - 160) < 320)) {
+      if (b === 'desert' || (Math.abs(x - 760) < 300 && Math.abs(z - 160) < 300)) {
         const band = Math.floor((h + nz * 2) / 3.2) % 4;
         out.set(['#c8844e', '#b66e40', '#d8a066', '#a85e3a'][band]);
       } else if (b === 'volcano') out.set(hash3(i, j) < 0.5 ? '#2e2624' : '#3a302c');

@@ -20,7 +20,7 @@ import * as THREE from '../../lib/three.module.js';
 import { Creature } from './Creature.js';
 import { SPECIES, SP, RARITY, VARIANTS } from '../data/Species.js';
 import { ITEMS } from '../data/Items.js';
-import { ZOO, RIVER, WHITEOUT, VOLCANO, TRENCH, MESAS } from '../data/Biomes.js';
+import { ZOO, RIVERS, WHITEOUT, VOLCANO, TRENCH, MESAS, VALLEY, GROTTO, HOME } from '../data/Biomes.js';
 import { INTERIORS } from '../data/Places.js';
 import { clamp, wrapAngle, weighted, lerp, damp } from '../core/Util.js';
 import { Bus } from '../core/Bus.js';
@@ -35,13 +35,14 @@ const DENS = [
   { id: 'hollow2', sp: 'crystal', x: INTERIORS.hollow.x + 25, z: INTERIORS.hollow.z - 30, r: 20, respawn: 600 },
   { id: 'caldera', sp: 'ember', x: VOLCANO.x + 40, z: VOLCANO.z + 120, r: 50, respawn: 420 },
   { id: 'skull', sp: 'trex', x: INTERIORS.skullcave.x, z: INTERIORS.skullcave.z - 15, r: 20, respawn: 900 },
-  { id: 'valley1', sp: 'trex', x: -150, z: -640, r: 50, respawn: 600 },
+  { id: 'valley1', sp: 'trex', x: VALLEY.x, z: VALLEY.z, r: 50, respawn: 600 },
+  { id: 'grotto', sp: 'helico', x: GROTTO.x, z: GROTTO.z, r: 12, depth: [3, 9], respawn: 420 },
 ];
 // river creatures spawn in the river's water, whatever the biome
 function nearRiver(x, z) {
   let best = Infinity;
-  for (let i = 0; i < RIVER.length - 1; i++) {
-    const [ax, az] = RIVER[i], [bx, bz] = RIVER[i + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
+  for (const RV of RIVERS) for (let i = 0; i < RV.pts.length - 1; i++) {
+    const [ax, az] = RV.pts[i], [bx, bz] = RV.pts[i + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
     const t = clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1);
     best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
   }
@@ -86,7 +87,7 @@ export class Wild {
     const h = T.ground(x, z);
     let b = T.biome(x, z);
     const river = h < -1.5 && nearRiver(x, z) < 70;
-    return { b, h, river, night: (G.sky?.state.night || 0) > 0.5, storm: G.weather.storm > 0.5, depth: -h, events: G.events.active };
+    return { b, h, river, night: (G.sky?.state.night || 0) > 0.5, storm: G.weather.storm > 0.5, depth: -h, events: G.events.active, dist: Math.hypot(x - HOME.x, z - HOME.z) };
   }
   weights(ctx, move) {
     const out = [];
@@ -103,6 +104,10 @@ export class Wild {
       if (ctx.night && sp.diet === 'carn') w *= 1.4;
       if (sp.move === 'swim') { const [a, b] = sp.depth || [2, 60]; if (ctx.depth < a) continue; if (ctx.depth > b * 3) w *= 0.2; }
       if (ctx.events?.migration && sp.move === 'fly') w *= 3;
+      // the farther from home, the rarer (and more dangerous) it gets
+      const stars = RARITY[sp.rarity].stars;
+      if (ctx.dist != null && stars >= 3) w *= clamp((ctx.dist - 220) / (stars >= 4 ? 520 : 380), 0.1, 2.4);
+      if (ctx.dist != null && stars <= 1) w *= clamp(1.6 - ctx.dist / 900, 0.5, 1.6);
       out.push({ sp, w });
     }
     return out;
@@ -499,7 +504,8 @@ export class Wild {
     else {
       A.st = 'cruise';
       if (near && near.inWater && sp.temper === 'aggressive' && d < 30) { A.st = 'hunt'; A.target = near.pid; A.t = 14; }
-      else if (near && near.inWater && sp.temper === 'skittish' && d < 18) { A.st = 'flee'; A.t = 6; A.from = near.pos.clone(); }
+      else if (near && near.inWater && sp.temper === 'skittish' && d < (near.mountSp ? 30 : 18) * (near.crouch ? 0.6 : 1)) { A.st = 'flee'; A.t = 6; A.from = near.pos.clone(); }
+      if (sp.fin && !A.leap) ty = -Math.max(0.35, c.height * 0.32);   // cruise just under the surface: the fin cuts the water
       if (A.leap) { ty = 2; want = sp.speed.swim; }
     }
     _v.set(tx - c.pos.x, (ty - c.pos.y) * 0.5, tz - c.pos.z);

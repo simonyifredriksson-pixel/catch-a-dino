@@ -111,6 +111,7 @@ export class Animator {
     else if (P === 'insectfly') this._dragonfly(dt, s, A, ar);
     else if (P === 'millipede') this._millipede(dt, s, A, ar);
     else if (P === 'scorpion') this._scorpion(dt, s, A, ar);
+    else if (P === 'ammonite') this._ammonite(dt, s);
     void k;
   }
 
@@ -463,6 +464,13 @@ export class Animator {
     for (const Lg of this.legs) Lg.bones[0].rotation.x += 0.3;
     if (this.w.thrash > 0.01) this.tail.forEach((b, i) => (b.rotation.y += Math.sin(t * 15 - i) * 0.3 * this.w.thrash));
     void A;
+  }
+  _ammonite(dt, s) {
+    const t = this.t, jet = Math.max(0, Math.sin(t * 2.2)), w = this.w.thrash;
+    this.hips.position.y += Math.sin(t * 1.3) * 0.05;
+    this.hips.rotation.x += Math.sin(t * 0.9) * 0.08 + w * Math.sin(t * 9) * 0.3;
+    this.hips.rotation.z += w * Math.sin(t * 7) * 0.4;
+    this.tail.forEach((b, i) => { const a = i / this.tail.length * Math.PI * 2; b.rotation.x += Math.sin(t * 3 + a) * 0.25 + jet * 0.3 + w * Math.sin(t * 12 + i) * 0.4; b.rotation.y += Math.cos(t * 2.4 + a) * 0.2; });
   }
   _millipede(dt, s) {
     const t = this.t, mv = this.w.move, ph = this.phase * TAU * 3;

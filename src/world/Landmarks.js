@@ -16,7 +16,7 @@
 import * as THREE from '../../lib/three.module.js';
 import { Mesher, geo, mat4, vcMat, vcGlow, signMesh } from '../art/Mesher.js';
 import { FLORA } from '../art/FloraArt.js';
-import { PLACES, BEACONS, GATES, INTERIORS, CHESTS, NESTS } from '../data/Places.js';
+import { PLACES, BEACONS, GATES, INTERIORS, CHESTS, NESTS, SPOTS, CRACKS } from '../data/Places.js';
 import { MESAS, ZOO, WORLD_HALF } from '../data/Biomes.js';
 import { rng, clamp, hash3 } from '../core/Util.js';
 import { Bus } from '../core/Bus.js';
@@ -25,9 +25,9 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const STONE = '#9a9888', STONE2 = '#8a887a', MOSS = '#5a8a3a', BONE = '#efe6d2';
 
 /** where the Crystal Hollow mouth is (in the foothills of the Spine Peaks) */
-export const HOLLOW_MOUTH = { x: 60, z: -548, yaw: 0 };
-export const TEMPLE = { x: -160, z: -320, base: 46 };
-export const SKULL = { x: -440, z: 900 };
+export const HOLLOW_MOUTH = { x: SPOTS.hollow.x, z: SPOTS.hollow.z, yaw: 0 };
+export const TEMPLE = SPOTS.temple;
+export const SKULL = SPOTS.skull;
 
 export class Landmarks {
   /** terrain pads that have to exist before the heightfield is sampled */
@@ -35,11 +35,11 @@ export class Landmarks {
     const raw = (x, z) => T._raw(x, z).h;
     const t = raw(TEMPLE.x, TEMPLE.z);
     T.mods.push({ kind: 'flat', x: TEMPLE.x, z: TEMPLE.z, r: 40, blend: 22, y: t });
-    T.mods.push({ kind: 'flat', x: -830, z: -30, r: 22, blend: 16, y: raw(-830, -30) });
-    T.mods.push({ kind: 'flat', x: -610, z: 260, r: 40, blend: 20, y: raw(-610, 260) });
-    const c = raw(-330, 250);
-    T.mods.push({ kind: 'raise', x: -330, z: 250, r: 34, blend: 10, y: c + 3 });
-    T.mods.push({ kind: 'carve', x: -330, z: 250, r: 24, blend: 10, y: c - 7 });
+    T.mods.push({ kind: 'flat', x: SPOTS.obelisk.x, z: SPOTS.obelisk.z, r: 22, blend: 16, y: raw(SPOTS.obelisk.x, SPOTS.obelisk.z) });
+    T.mods.push({ kind: 'flat', x: SPOTS.ribcage.x, z: SPOTS.ribcage.z, r: 40, blend: 20, y: raw(SPOTS.ribcage.x, SPOTS.ribcage.z) });
+    const c = raw(SPOTS.crater.x, SPOTS.crater.z);
+    T.mods.push({ kind: 'raise', x: SPOTS.crater.x, z: SPOTS.crater.z, r: 34, blend: 10, y: c + 3 });
+    T.mods.push({ kind: 'carve', x: SPOTS.crater.x, z: SPOTS.crater.z, r: 24, blend: 10, y: c - 7 });
     for (const B of BEACONS) T.mods.push({ kind: 'flat', x: B.x, z: B.z, r: 5, blend: 6, y: raw(B.x, B.z) });
     // the ravine up to the Crystal Hollow mouth
     const h0 = raw(HOLLOW_MOUTH.x, HOLLOW_MOUTH.z + 52);
@@ -65,17 +65,20 @@ export class Landmarks {
   build() {
     const ex = this.g.scatter.exclude;
     this._temple(); ex.push({ x: TEMPLE.x, z: TEMPLE.z, r: 42 });
-    this._ribcage(); ex.push({ x: -610, z: 260, r: 40 });
-    this._obelisk(); ex.push({ x: -830, z: -30, r: 20 });
-    this._worldTree(); ex.push({ x: -520, z: -430, r: 22 });
+    this._ribcage(); ex.push({ x: SPOTS.ribcage.x, z: SPOTS.ribcage.z, r: 40 });
+    this._obelisk(); ex.push({ x: SPOTS.obelisk.x, z: SPOTS.obelisk.z, r: 20 });
+    this._worldTree(); ex.push({ x: SPOTS.worldtree.x, z: SPOTS.worldtree.z, r: 22 });
     this._skull(); ex.push({ x: SKULL.x, z: SKULL.z, r: 40 });
-    this._frozen(); ex.push({ x: -700, z: -760, r: 30 });
-    this._crater(); ex.push({ x: -330, z: 250, r: 30 });
+    this._frozen(); ex.push({ x: SPOTS.frozen.x, z: SPOTS.frozen.z, r: 30 });
+    this._crater(); ex.push({ x: SPOTS.crater.x, z: SPOTS.crater.z, r: 30 });
     this._arches();
     this._ruins();
     this._colossus();
     this._mesaNest();
     this._hollowMouth(); ex.push({ x: HOLLOW_MOUTH.x, z: HOLLOW_MOUTH.z + 20, r: 26 });
+    this._dock();
+    this._lighthouse();
+    this._grotto();
     for (const B of BEACONS) { this._beacon(B); ex.push({ x: B.x, z: B.z, r: 6 }); }
     for (const G of GATES) this._gate(G);
     for (const C of CHESTS) this._chest(C);
@@ -124,7 +127,7 @@ export class Landmarks {
     this.templeTop = { x, y: top, z };
   }
   _ribcage() {
-    const x = -610, z = 260, y = this._y(x, z), M = new Mesher(0.05, 12), G = this.g.colliders;
+    const { x, z } = SPOTS.ribcage, y = this._y(x, z), M = new Mesher(0.05, 12), G = this.g.colliders;
     const L = 60, n = 14;
     // spine
     for (let i = 0; i < n + 6; i++) { const t = i / (n + 5), zz = z - L / 2 + t * L * 1.1, yy = y + 12 + Math.sin(t * Math.PI) * 6 - t * 4; M.ico(x, yy, zz, 3.4, 2.6, 3.2, i % 2 ? BONE : '#e2d8c0', 0); }
@@ -152,7 +155,7 @@ export class Landmarks {
     this._add(M);
   }
   _obelisk() {
-    const x = -830, z = -30, y = this._y(x, z), M = new Mesher(0.04, 13), G = this.g.colliders;
+    const { x, z } = SPOTS.obelisk, y = this._y(x, z), M = new Mesher(0.04, 13), G = this.g.colliders;
     M.frust(x, y, z, 3.4, 1.8, 34, '#6a6878', 4);
     M.cone(x, y + 34, z, 1.9, 4, '#5a5868', 4);
     for (let i = 0; i < 6; i++) M.box(x, y + 6 + i * 4.6, z, 3.6 - i * 0.28, 0.4, 3.6 - i * 0.28, '#3af0ff', 0.785, { glow: true });
@@ -166,7 +169,7 @@ export class Landmarks {
     void m;
   }
   _worldTree() {
-    const x = -520, z = -430, y = this._y(x, z), M = new Mesher(0.06, 14), G = this.g.colliders;
+    const { x, z } = SPOTS.worldtree, y = this._y(x, z), M = new Mesher(0.06, 14), G = this.g.colliders;
     let p = V(x, y - 2, z);
     for (let i = 0; i < 10; i++) { const q = p.clone().add(V(Math.sin(i * 0.7) * 1.5, 13, Math.cos(i * 0.5) * 1.5)); M.seg(p, q, 9 - i * 0.55, 9 - (i + 1) * 0.55, i % 2 ? '#7a4a2e' : '#8a5434', 10); p = q; }
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; M.seg(V(x + Math.cos(a) * 16, y - 1, z + Math.sin(a) * 16), V(x + Math.cos(a) * 5, y + 14, z + Math.sin(a) * 5), 3, 1.4, '#7a4228', 6); }
@@ -203,7 +206,7 @@ export class Landmarks {
     this.portals.push({ id: 'skullcave', x, z: z + 20, y, r: 4, to: 'skullcave', back: { x, z: z + 30, yaw: 0 } });
   }
   _frozen() {
-    const x = -700, z = -760, y = this._y(x, z), M = new Mesher(0.04, 16), G = this.g.colliders;
+    const { x, z } = SPOTS.frozen, y = this._y(x, z), M = new Mesher(0.04, 16), G = this.g.colliders;
     M.add(geo.box(), mat4(x, y + 7, z, 0.3, 34, 16, 20), '#bfe8f8', {});
     for (let i = 0; i < 9; i++) { const zz = z - 14 + i * 3.4; for (const s of [-1, 1]) M.seg(V(x + s * 2, y + 14, zz), V(x + s * 9, y + 3 + i * 0.2, zz + 1), 0.7, 0.5, BONE, 6); }
     M.ico(x + 4, y + 13, z + 18, 10, 8, 12, BONE, 1);
@@ -212,7 +215,7 @@ export class Landmarks {
     this._add(M);
   }
   _crater() {
-    const x = -330, z = 250, y = this._y(x, z), M = new Mesher(0.05, 17);
+    const { x, z } = SPOTS.crater, y = this._y(x, z), M = new Mesher(0.05, 17);
     for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, d = 3 + (i % 4) * 2.5; M.add(geo.oct(), mat4(x + Math.cos(a) * d, y + 1.5, z + Math.sin(a) * d, a, 1.2, 3 + (i % 3) * 1.5, 1.2, 0.3, 0.2), i % 2 ? '#9a7aff' : '#7af0ff', { glow: true }); }
     M.dode(x, y + 1.2, z, 6, 3.6, 5, '#2a2430', 0);
     this._add(M);
@@ -220,7 +223,7 @@ export class Landmarks {
   }
   _arches() {
     const M = new Mesher(0.06, 18);
-    for (const [x, z, s, ry] of [[-220, 578, 1, 0.3], [-245, 590, 0.6, 1.2], [272, 588, 0.85, -0.4]]) {
+    for (const [x, z, s, ry] of SPOTS.arches) {
       const y = Math.max(0, this._y(x, z));
       M.add(geo.tor(12, 0.22), mat4(x, y - 2, z, ry, 26 * s, 30 * s, 26 * s, 0, 0), '#c8a070', { deform: v => { if (v.y < -0.1) v.y = -0.1; } });
       this.g.colliders.circle(x - Math.cos(ry) * 12 * s, z + Math.sin(ry) * 12 * s, 3 * s, y - 3, y + 20 * s);
@@ -229,7 +232,7 @@ export class Landmarks {
     this._add(M);
   }
   _ruins() {
-    const cx = 150, cz = 720, M = new Mesher(0.06, 19), r = rng(19), G = this.g.colliders;
+    const cx = SPOTS.ruins.x, cz = SPOTS.ruins.z, M = new Mesher(0.06, 19), r = rng(19), G = this.g.colliders;
     for (let i = 0; i < 22; i++) {
       const a = r() * Math.PI * 2, d = 6 + r() * 34, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = this._y(x, z);
       const h = r() < 0.4 ? 3 + r() * 4 : 9 + r() * 7;
@@ -246,7 +249,7 @@ export class Landmarks {
     this._add(M);
   }
   _colossus() {
-    const x = -160, z = 965, M = new Mesher(0.05, 20), G = this.g.colliders;
+    const { x, z } = SPOTS.colossus, M = new Mesher(0.05, 20), G = this.g.colliders;
     const y = this._y(x, z);
     for (let i = 0; i < 30; i++) { const t = i / 29, zz = z - 40 + t * 80, yy = this._y(x, zz) + 3 + Math.sin(t * Math.PI) * 4; M.ico(x + Math.sin(t * 5) * 3, yy, zz, 3.2, 2.6, 3, BONE, 0); if (i % 3 === 0 && t < 0.8) for (const s of [-1, 1]) { const p0 = V(x + Math.sin(t * 5) * 3, yy, zz); M.seg(p0, V(p0.x + s * 12, this._y(p0.x + s * 12, zz) + 1, zz + 2), 0.9, 0.6, BONE, 6); } }
     M.ico(x + 3, y + 6, z + 46, 14, 10, 22, BONE, 1);
@@ -275,6 +278,71 @@ export class Landmarks {
     this._add(M);
     const G = GATES.find(g => g.id === 'g_hollow'); G.x = x; G.z = z + 4;
     this.portals.push({ id: 'hollow', x, z: z - 0.5, y, r: 3.5, to: 'hollow', gate: 'g_hollow', back: { x, z: z + 8, yaw: 0 } });
+  }
+
+  /** the dock on Home Island's south shore: where you fish, and where your swimmers wait */
+  _dock() {
+    const D = SPOTS.dock, M = new Mesher(0.06, 91), G = this.g.colliders, deck = 1.5;
+    // walk from the island out over the water
+    let z0 = D.z - 14; while (z0 < D.z + 10 && this._y(D.x, z0) > deck - 0.2) z0 += 1;
+    const z1 = D.z + D.len, L = z1 - z0 + 4, zc = (z0 - 4 + z1) / 2;
+    M.box(D.x, deck - 0.25, zc, 4.2, 0.25, L, '#a07a4a');
+    for (let i = 0; i < L / 1.1; i++) M.box(D.x, deck - 0.02, z0 - 4 + i * 1.1 + 0.5, 4.3, 0.04, 0.12, '#7a5a34');
+    for (let z = z0 - 2; z <= z1; z += 5) for (const s of [-1, 1]) { M.cyl(D.x + s * 2.2, -6, z, 0.22, deck + 6.4, '#6a4a2a', 6); M.box(D.x + s * 2.2, deck, z, 0.12, 1.0, 0.12, '#6a4a2a'); }
+    for (const s of [-1, 1]) M.box(D.x + s * 2.2, deck + 0.9, zc, 0.1, 0.1, L, '#8a6a3a');
+    // a T at the end, with a bell post and rope coils
+    M.box(D.x, deck - 0.25, z1 + 2, 12, 0.25, 6, '#a07a4a');
+    for (const s of [-1, 1]) M.cyl(D.x + s * 5.6, -6, z1 + 4.5, 0.25, deck + 6.6, '#6a4a2a', 6);
+    M.cyl(D.x + 4, deck, z1 + 1, 0.12, 2.6, '#5a3a20', 6); M.add(geo.cone(8), mat4(D.x + 4, deck + 2.4, z1 + 1, 0, 0.6, 0.5, 0.6, Math.PI, 0), '#e8b830');
+    M.add(geo.tor(10, 0.25), mat4(D.x - 3.5, deck + 0.1, z1 + 2.5, 0, 1, 1, 1, Math.PI / 2, 0), '#c8a060');
+    const m = this._add(M); void m;
+    G.box(D.x, zc, 2.1, L / 2, 0, deck - 3, deck, 'dock', true);
+    G.box(D.x, z1 + 2, 6, 3, 0, deck - 3, deck, 'dock', true);
+    const s = signMesh(['DOCK'], 2.6, 0.9, { bg: '#f6ecd0', fg: '#2a5a8a', double: true }); s.position.set(D.x - 2.8, deck + 1.6, z0 - 2); s.rotation.y = 0; this.scene.add(s);
+    this.dock = { x: D.x, z: z1 + 3, y: deck };
+    this.items.push({ id: 'dock', x: D.x, y: deck, z: z1 + 2, r: 6, label: () => 'The Dock - cast your rod from here, or call out a swimmer from your hotbar', act: () => this.g.ui.toast('Hold your rod (2) and cast into the lagoon - or press a swimmer\'s hotbar number to ride it.', 'info') });
+    this.g.scatter.exclude.push({ x: D.x, z: D.z, r: 22 });
+  }
+  /** the Home Island lighthouse: you can see it from anywhere on the lagoon */
+  _lighthouse() {
+    const M = new Mesher(0.05, 93), C = this.g.colliders;
+    let x = -118, z = 168; while (this._y(x, z) < 3 && Math.hypot(x, z) > 60) { x *= 0.96; z *= 0.96; }
+    const g = this._y(x, z), H = 36;
+    M.cyl(x, g - 2, z, 5.2, 4.5, '#8a887a', 10);
+    for (let i = 0; i < 6; i++) { const y0 = g + 2.5 + i * (H / 6), r0 = 3.6 - i * 0.28; M.add(geo.cyl(12), mat4(x, y0 + H / 12, z, 0, r0 * 2, H / 6 + 0.05, r0 * 2), i % 2 ? '#d83a2a' : '#f4efe4'); }
+    const top = g + 2.5 + H;
+    M.cyl(x, top, z, 2.9, 0.5, '#3a3a3a', 12);
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; M.cyl(x + Math.cos(a) * 2.7, top + 0.5, z + Math.sin(a) * 2.7, 0.06, 1.1, '#2a2a2a', 4); }
+    M.add(geo.cone(12), mat4(x, top + 5.3, z, 0, 6.4, 4, 6.4), '#d83a2a');
+    this._add(M);
+    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 2.4, 10), new THREE.MeshBasicMaterial({ color: '#fff2b0', fog: false }));
+    lamp.position.set(x, top + 2, z); this.scene.add(lamp);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 9, 160, 10, 1, true).rotateZ(Math.PI / 2).translate(80, 0, 0), new THREE.MeshBasicMaterial({ color: '#fff2b0', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false }));
+    beam.position.copy(lamp.position); beam.userData.key = 'lighthouse'; this.scene.add(beam); this.beams.push(beam);
+    this.lighthouse = { x, z, top, lamp, beam };
+    C.circle(x, z, 4.2, g - 3, top + 6, 'lighthouse');
+    this.g.scatter.exclude.push({ x, z, r: 9 });
+  }
+  /** Turtle Grotto: a ring of sea-stacks in the lagoon with one narrow gap (small swimmers only) */
+  _grotto() {
+    const Gr = SPOTS.grotto, M = new Mesher(0.07, 92), C = this.g.colliders, r = rng(92);
+    const gapA = Math.atan2(-Gr.x, -Gr.z);        // the gap faces home
+    // stacks overlap all the way round except for one 3.3 m gap
+    const n = 22, rad = 5.4, gapW = 3.3, cr = rad * 0.95;
+    const gapArc = (2 * cr + gapW) / Gr.r, step = (Math.PI * 2 - gapArc) / (n - 1);
+    for (let i = 0; i < n; i++) {
+      const a = gapA + gapArc / 2 + i * step;
+      const x = Gr.x + Math.sin(a) * Gr.r, z = Gr.z + Math.cos(a) * Gr.r;
+      const g = this._y(x, z), h = 6 + r() * 10;
+      M.add(geo.dode(), mat4(x, g + (h - g) / 2, z, r() * 3, rad * 2, h - g + 2, rad * 2), r() < 0.5 ? '#8a8478' : '#7a7468');
+      M.ico(x, h + 0.5, z, rad * 1.6, 1.2, rad * 1.6, '#5a9a4a', 0);
+      C.circle(x, z, cr, g - 2, h + 2, 'stack');
+    }
+    // two posts frame the way in, with a little sign
+    for (const s of [-1, 1]) { const a = gapA + s * gapArc * 0.5, x = Gr.x + Math.sin(a) * (Gr.r + 2), z = Gr.z + Math.cos(a) * (Gr.r + 2); M.cyl(x, -4, z, 0.3, 7, '#6a4a2a', 6); }
+    for (let i = 0; i < 10; i++) { const a = r() * 6.28, d = r() * Gr.r * 0.6; M.add(geo.oct(), mat4(Gr.x + Math.cos(a) * d, this._y(Gr.x, Gr.z) + 0.8, Gr.z + Math.sin(a) * d, r(), 0.5, 1.4, 0.5), '#7af0ff', { glow: true }); }
+    this._add(M);
+    this.grottoGap = { x: Gr.x + Math.sin(gapA) * Gr.r, z: Gr.z + Math.cos(gapA) * Gr.r };
   }
 
   /* =================== small things =================== */
@@ -369,7 +437,7 @@ export class Landmarks {
       this.digs.push({ i: this.digs.length, x, z, y: h, biome: b });
     }
     // ribcage and crater always have one
-    for (const [x, z, b] of [[-600, 240, 'desert'], [-620, 285, 'desert'], [-330, 250, 'crater']]) this.digs.push({ i: this.digs.length, x, z, y: T.ground(x, z), biome: b });
+    for (const [x, z, b] of [[SPOTS.ribcage.x + 10, SPOTS.ribcage.z - 20, 'desert'], [SPOTS.ribcage.x - 10, SPOTS.ribcage.z + 25, 'desert'], [SPOTS.crater.x, SPOTS.crater.z, 'crater']]) this.digs.push({ i: this.digs.length, x, z, y: T.ground(x, z), biome: b });
     const mound = new Mesher(0.08, 61); mound.dode(0, 0.1, 0, 2.4, 0.9, 2.2, '#8a6a4a'); mound.dode(0.4, 0.3, 0.2, 1.2, 0.6, 1.1, '#7a5a3a');
     const mg = mound.geometry();
     this.digMesh = new THREE.InstancedMesh(mg, [vcMat(), vcGlow()], this.digs.length);
@@ -386,7 +454,7 @@ export class Landmarks {
   }
   _cracks() {
     // narrow cracks in big rocks: only a tiny creature from your crate fits
-    const spots = [[-80, -210, 'jungle'], [-260, -420, 'elder'], [-700, 140, 'desert'], [-540, 330, 'desert'], [600, -200, 'swamp'], [90, -470, 'peaks'], [-600, -700, 'tundra'], [560, -600, 'volcano'], [-120, 430, 'meadow'], [230, 120, 'meadow'], [-420, 860, 'skull'], [380, 840, 'isle'], [-150, -560, 'valley'], [160, -330, 'jungle']];
+    const spots = CRACKS;
     const M = new Mesher(0.07, 71);
     spots.forEach(([x, z, b], i) => {
       const y = this.T.ground(x, z);
@@ -482,6 +550,7 @@ export class Landmarks {
       const k = b.userData.key;
       let want = 0;
       if (k === 'obelisk') want = night * 0.35;
+      else if (k === 'lighthouse') { want = 0.04 + night * 0.3; b.rotation.y += dt * 0.6; }
       else if (k.startsWith('beacon:')) want = this.W?.beacons?.[k.slice(7)] ? 0.1 + night * 0.25 : 0;
       b.material.opacity += (want - b.material.opacity) * Math.min(1, dt * 2);
       b.visible = b.material.opacity > 0.01;
@@ -499,7 +568,8 @@ export class Landmarks {
   discover(p) {
     for (const P of PLACES) {
       if (this.W.flags['seen:' + P.id]) continue;
-      if (Math.hypot(p.x - P.x, p.z - P.z) < P.r && (!P.minY || p.y > P.minY)) return P;
+      const d = Math.hypot(p.x - P.x, p.z - P.z);
+      if (d < P.r && (!P.minY || p.y > P.minY) && (!P.minR || d > P.minR)) return P;
     }
     return null;
   }

@@ -80,6 +80,32 @@ export const TOOLS = {
     targets: ['land', 'water', 'air'], maxSize: 'XL', effect: 'luck',
     desc: 'Woven from fossil resin. Things caught with it are more often rare colours. Holds anything that lives.',
   },
+  // ---- fishing rods (the Hooked catch: cast, wait for the bob, strike, fight).
+  //      Small swimmers fight on the line; hook something big and it comes up out of the water.
+  reedrod: {
+    name: 'Reed Rod', kind: 'rod', behavior: 'rod', rarity: 'common', price: 0, level: 0, color: '#c8b070',
+    stats: { rating: 1.0, band: 0.28, lift: 3.2, fall: 2.5, control: 1.05, range: 22, window: 1.0, bite: 1 },
+    targets: ['water'], maxSize: 'XL',
+    desc: 'A bendy reed with a bone hook. Cast it off the dock - the lagoon is full of things that bite.',
+  },
+  bonerod: {
+    name: 'Bone Rod', kind: 'rod', behavior: 'rod', rarity: 'uncommon', price: 3000, level: 1, color: '#e8dcc0',
+    stats: { rating: 2.0, band: 0.29, lift: 3.3, fall: 2.5, control: 1.1, range: 28, window: 1.1, bite: 1.25 },
+    targets: ['water'], maxSize: 'XL',
+    desc: 'Carved from a long-neck\'s rib. Strong enough to keep a big head above the water.',
+  },
+  ironrod: {
+    name: 'Ironbark Rod', kind: 'rod', behavior: 'rod', rarity: 'rare', price: 9500, level: 3, color: '#6a5a4a',
+    stats: { rating: 3.3, band: 0.3, lift: 3.5, fall: 2.6, control: 1.2, range: 34, window: 1.2, bite: 1.45 },
+    targets: ['water'], maxSize: 'XL',
+    desc: 'Wood that sinks. A line that does not snap. Mosasaurs, beware.',
+  },
+  levrod: {
+    name: 'Leviathan Rod', kind: 'rod', behavior: 'rod', rarity: 'legendary', price: 42000, level: 5, color: '#2a8aa0',
+    stats: { rating: 5.4, band: 0.32, lift: 3.7, fall: 2.6, control: 1.3, range: 42, window: 1.35, bite: 1.7 },
+    targets: ['water'], maxSize: 'XL', effect: 'luck',
+    desc: 'Glows faintly blue. Legends say it was made to land the thing at the bottom of the Trench.',
+  },
   // ---- utilities
   binoculars: { name: 'Binoculars', kind: 'util', behavior: 'scan', rarity: 'common', price: 0, level: 0, color: '#3a3a4a', desc: 'Hold to zoom. Look at a creature to scan it into your Dino Dex (and see how strong it is).' },
   machete: { name: 'Machete', kind: 'util', behavior: 'cut', rarity: 'common', price: 650, level: 0, color: '#b8c0c8', desc: 'Cuts through vine curtains. Some ruins are hidden behind them.' },

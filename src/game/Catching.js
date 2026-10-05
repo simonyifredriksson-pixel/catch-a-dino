@@ -35,6 +35,7 @@ import { Bus } from '../core/Bus.js';
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _u = new THREE.Vector3();
 const TIER = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, mythic: 5 };
 const GRAV = { lasso: 14, bola: 12, net: 9, harpoon: 1.5, skyhook: 3 };
+function F0(F, d) { F.dist0 = Math.max(6, Math.min(40, d)); F.dist = F.dist0; }
 
 export class Catching {
   constructor(game) {
@@ -55,10 +56,12 @@ export class Catching {
   get fighting() { return this.state === 'fight'; }
   get moveMul() { return { fight: 0.32, snare: 0.15, charge: 0.6, fly: 0.9, reel: 1, assist: 0.4 }[this.state] ?? 1; }
   get tool() { return TOOLS[this.toolId] || TOOLS.rope; }
-  kindOf(c) { return c.flying ? 'air' : (c.under || (c.swimmer && c.inWater)) ? 'water' : 'land'; }
+  kindOf(c) { return c.flying ? 'air' : c.pos.y < -c.height * 0.55 ? 'water' : (c.swimmer || c.inWater) ? 'surface' : 'land'; }
+  /** can tool T catch this kind? (a swimmer at the surface: any lasso or harpoon will do) */
+  canCatch(T, kind) { return T.targets.includes(kind) || (kind === 'surface' && (T.targets.includes('land') || T.targets.includes('water'))); }
   /** how hard would this one be with what you are holding? 'easy' | 'fair' | 'hard' | 'too strong' */
   difficulty(c, toolId) {
-    const T = TOOLS[toolId]; if (!T || T.kind !== 'catch') return null;
+    const T = TOOLS[toolId]; if (!T || (T.kind !== 'catch' && T.kind !== 'rod')) return null;
     if (SIZE_RANK[c.sp.size] > SIZE_RANK[T.maxSize]) return 'too big';
     const over = this._fightOf(c) - this._rating(T);
     return over > 0.25 ? 'too strong' : over > -0.15 ? 'hard' : over > -0.6 ? 'fair' : 'easy';
@@ -91,6 +94,7 @@ export class Catching {
   /** where the rope leaves your hand */
   handPos(out) {
     const P = this.g.player;
+    if (TOOLS[this.toolId]?.kind === 'rod' && this.g.fishing) return this.g.fishing.tipPos(out);
     P.rig.P.handR.getWorldPosition(out);
     return out;
   }
@@ -154,6 +158,7 @@ export class Catching {
     const t = Math.max(0.12, dist / speed);
     const vel = to.clone().divideScalar(t); vel.y += 0.5 * g * t;
     this.proj = { pos: from.clone(), vel, g, t: 0, maxT: t * 2.2 + 0.4, under: from.y < 0 };
+    this.sneak = !!P.crouch;      // thrown from a crouch: they did not see it coming
     this.projMesh = projectileModel(this.toolId); this.projMesh.position.copy(from); G.scene.add(this.projMesh);
     this.state = 'fly';
     P.A.throw = 2;
@@ -193,7 +198,7 @@ export class Catching {
   _latch(c) {
     const G = this.g, T = this.tool;
     const kind = this.kindOf(c);
-    if (!T.targets.includes(kind)) { this.msg(kind === 'air' ? 'The ' + T.name + ' cannot catch things in the air.' : kind === 'water' ? 'The ' + T.name + ' cannot catch things in the water - try a harpoon.' : 'The ' + T.name + ' does not work on land.', 'warn'); return this._miss(); }
+    if (!this.canCatch(T, kind)) { this.msg(kind === 'air' ? 'The ' + T.name + ' cannot catch things in the air.' : kind === 'water' ? 'The ' + T.name + ' cannot catch things in the water - try a harpoon.' : 'The ' + T.name + ' does not work on land.', 'warn'); return this._miss(); }
     if (SIZE_RANK[c.sp.size] > SIZE_RANK[T.maxSize]) { this.msg('Too big for the ' + T.name + '!', 'warn'); G.wild.spook(c, G.player.pos); return this._miss(); }
     if (c.claim && c.claim !== G.me) {
       // somebody else is already fighting this one: help them
@@ -209,8 +214,9 @@ export class Catching {
     this.state = 'snare';
     const eating = c.ai?.st === 'eat' || c.ai?.st === 'bait';
     const stunned = c.stun > 0;
-    const D = 1.35 / (1 + c.sp.erratic * 0.18) * T.stats.window * (eating ? 1.6 : 1) * (stunned ? 1.35 : 1);
-    this.ringDur = Math.max(0.55, D); this.ring = 0; this.eating = eating;
+    const D = 1.35 / (1 + c.sp.erratic * 0.18) * T.stats.window * (eating ? 1.6 : 1) * (stunned ? 1.35 : 1) * (this.sneak ? 1.5 : 1);
+    this.ringDur = Math.max(0.55, D); this.ring = 0; this.eating = eating || this.sneak;
+    if (this.sneak) this.msg('Sneak attack! It did not see you coming.', 'good');
     c.astate = 'thrash'; c.anim.play(c.sp.diet === 'carn' ? 'roar' : 'shake');
     G.audio.latch();
     if (c.sp.temper !== 'skittish') G.audio.roar(c.pos, Math.min(1, c.height / 6), c.flyer ? 'screech' : 'roar');
@@ -247,7 +253,7 @@ export class Catching {
   }
 
   /* ---------------- the fight ---------------- */
-  _startFight(perfect) {
+  _startFight(perfect, o = {}) {
     const G = this.g, c = this.c, sp = c.sp, T = this.tool;
     const tier = TIER[sp.rarity] + (sp.size === 'XL' ? 0.5 : 0);
     const er = sp.erratic, sizeF = c.size;
@@ -270,12 +276,20 @@ export class Catching {
       bearing: Math.atan2(c.pos.x - G.player.pos.x, c.pos.z - G.player.pos.z),
       dist0: clamp(c.pos.distanceTo(G.player.pos), 7, 24), dist: c.pos.distanceTo(G.player.pos), dir: 0,
       t: 0, perfect,
+      fishing: !!o.fishing, big: !!o.fishing && (sp.size === 'L' || sp.size === 'XL'), emerge: 0, emergeT: 2.5, jumpT: 3 + Math.random() * 3, jump: 0,
     };
+    if (o.dist) F0(this.F, o.dist);
     this.bar = { zone: 0.5, vel: 0, catch: 0.3 + (perfect ? 0.12 : 0) + (this.eating ? 0.15 : 0), fought: 0, tired: 0, held: 0, on: 0 };
     this.state = 'fight';
     c.astate = 'thrash';
     G.audio.latch();
-    G.ui.banner(perfect ? 'PERFECT SNARE!' : 'SNARED!', 'Hold LMB to pull - keep its head in your loop - brace with A / D when it lunges', perfect ? 'good' : 'info', 2.2);
+    if (this.F.big) {
+      // the water bulges, then something enormous rolls at the surface
+      G.ui.banner('SOMETHING BIG IS ON THE LINE!', sp.size === 'XL' ? 'Hold on with everything you have!' : 'Keep it in your loop - and watch the water.', 'legend', 3);
+      G.cam.shake(0.6); G.audio.roar(c.pos, Math.min(1, c.height / 5), 'bellow');
+      this.F.emergeT = 1.2;
+    } else if (o.fishing) G.ui.banner(perfect ? 'HOOKED - PERFECT STRIKE!' : 'HOOKED!', 'Hold LMB to reel - keep it in your loop - brace with A / D when it runs', 'good', 2);
+    else G.ui.banner(perfect ? 'PERFECT SNARE!' : 'SNARED!', 'Hold LMB to pull - keep its head in your loop - brace with A / D when it lunges', perfect ? 'good' : 'info', 2.2);
     Bus.emit('catch:fight', { c, perfect });
   }
   assist(pid) { this.assists[pid] = this.g.time; }
@@ -320,6 +334,25 @@ export class Catching {
       if (L.next <= 0 && F.t > 2) { L.on = Math.max(0.5, 0.85 - F.tier * 0.05); L.dir = Math.random() < 0.5 ? -1 : 1; c.anim.play('attack'); G.audio.roar(c.pos, Math.min(1, c.height / 7) * 0.6, c.flyer ? 'screech' : 'roar'); }
     }
     B.catch = clamp(B.catch, 0, 1);
+    // --- on a fishing line: big ones surface (head, neck, fin, back), small ones leap
+    if (F.fishing) {
+      F.emerge = Math.max(0, F.emerge - dt);
+      if (F.big) {
+        F.emergeT -= dt;
+        if (F.emergeT <= 0 && F.emerge <= 0) {
+          F.emerge = 2.8; F.emergeT = 5 + Math.random() * 5;
+          c.anim.play(Math.random() < 0.6 ? 'roar' : 'attack');
+          G.fx.splash(c.pos.x, 0, c.pos.z, Math.min(4, 1 + c.height * 0.5)); G.fx.ring(c.pos.x, 0.1, c.pos.z, 4 + c.len * 0.5, '#ffffff', 1.2);
+          G.audio.splash(c.pos, 2); G.audio.roar(c.pos, Math.min(1, c.height / 5));
+          G.cam.shake(0.35 + Math.min(0.5, c.len * 0.02));
+        }
+        if (F.emerge <= 0 && Math.random() < dt * 4) G.fx.burst(c.pos.x, 0.1, c.pos.z, 'foam', 2, { scale: 1 + c.len * 0.1, spread: c.len * 0.3 });
+      } else {
+        F.jumpT -= dt;
+        if (F.jumpT <= 0) { F.jumpT = 3.5 + Math.random() * 4; F.jump = 0.0001; G.fx.splash(c.pos.x, 0, c.pos.z, 0.8); G.audio.splash(c.pos, 0.6); }
+      }
+      if (F.jump > 0) { F.jump += dt; if (F.jump > 0.9) { F.jump = 0; G.fx.splash(c.pos.x, 0, c.pos.z, 0.7); } }
+    }
     // --- the world: it runs circles on the end of the rope and comes closer as you win
     const want = 3 + c.radius * 1.6 + (F.dist0 - 3 - c.radius * 1.6) * (1 - B.catch);
     F.dist = damp(F.dist, Math.max(2.5, want), 1.4, dt);
@@ -397,7 +430,18 @@ export class Catching {
       if (sp > 0.3) c.yaw = Math.atan2(vx, vz) * 0.3 + Math.atan2(c.pos.x - P.pos.x, c.pos.z - P.pos.z) * 0.7;
       c.speed = damp(c.speed, Math.min(sp, c.sp.speed.run || 8), 6, dt);
       if (c.flyer) { c.flying = true; c.flap = 1; const gy = Math.max(G.terrain.ground(c.pos.x, c.pos.z), 0); c.pos.y = damp(c.pos.y, gy + 3 + c.height + (1 - k) * 10, 2, dt); }
-      else if (c.swimmer) { c.pos.y = damp(c.pos.y, Math.max(G.terrain.ground(c.pos.x, c.pos.z) + c.height * 0.5, -1.2 - (1 - k) * 3 + Math.sin(F.t * 2) * 0.6), 2, dt); c.under = c.pos.y < -0.4; }
+      else if (c.swimmer) {
+        const floor = G.terrain.ground(c.pos.x, c.pos.z) + c.height * 0.5;
+        let ty = -1.2 - (1 - k) * 3 + Math.sin(F.t * 2) * 0.6, tp = 0;
+        if (F.fishing && F.big) {
+          // lurking deep, a shadow and a wake... then up it comes
+          ty = F.emerge > 0 ? -c.height * 0.12 + Math.sin(F.t * 3) * 0.3 : -c.height * 1.1 - 1;
+          tp = F.emerge > 0 ? -0.55 : 0.1;
+        } else if (F.fishing && F.jump > 0) { ty = Math.sin(Math.min(1, F.jump / 0.9) * Math.PI) * (1 + c.height * 1.5); tp = -0.8 + F.jump * 1.8; }
+        c.pos.y = damp(c.pos.y, Math.max(floor, ty), F.jump > 0 ? 12 : F.emerge > 0 ? 3.5 : 2, dt);
+        c.pitch = damp(c.pitch, tp, 4, dt);
+        c.under = c.pos.y < -0.4;
+      }
       else { const gy = G.terrain.ground(c.pos.x, c.pos.z); c.pos.y = Math.max(gy, c.amph && gy < -c.hip ? -0.15 : gy); c.onGround = true; }
       G.colliders.push(c.pos, c.radius, c.height);
     } else c.speed = damp(c.speed, 0, 6, dt);
@@ -417,6 +461,9 @@ export class Catching {
     this.loop.lookAt(this.tip);
     this.loop.visible = true;
     const L = this.tip.distanceTo(_u);
+    const rod = TOOLS[this.toolId]?.kind === 'rod';
+    this.rope.w = rod ? 0.028 : 0.06; this.loop.visible = !rod;
+    if (rod) c.mouth(_u);
     this.rope.draw(this.tip, _u, L * 0.12 * (1 - clamp(tension, 0, 1)), G.camera.position, tension > 0.9 ? 0.04 : 0, G.time);
     this.rope.color = tension > 0.98 ? '#ff7a5a' : tension > 0.82 ? '#ffd27a' : '#c8a878';
   }

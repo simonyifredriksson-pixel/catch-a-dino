@@ -137,11 +137,12 @@ export class Riding {
       if (!blocked && (input.held('ControlLeft') || input.held('KeyQ'))) dir.y -= 0.9;
       const can = c.has('dive') ? 1 : 0;
       if (!can && dir.y < 0) dir.y = 0;
-      if (dir.lengthSq() < 0.01) dir.set(Math.sin(c.yaw), 0, Math.cos(c.yaw));
+      if (dir.lengthSq() < 0.01 || this.charging > 0) dir.set(Math.sin(c.yaw) * Math.cos(c.pitch), -Math.sin(c.pitch), Math.cos(c.yaw) * Math.cos(c.pitch));
       dir.normalize();
       const sprint = sprintKey && this.stamina > 0.05;
       if (sprint) this.stamina = Math.max(0, this.stamina - dt * 0.16 / stamMul); else this.stamina = Math.min(1, this.stamina + dt * 0.2);
-      const spd = moving || input.held('Space') || input.held('ControlLeft') ? (sp.speed.swim || 8) * (sprint ? 1.35 : 0.85) : 0;
+      let spd = moving || input.held('Space') || input.held('ControlLeft') ? (sp.speed.swim || 8) * (sprint ? 1.35 : 0.85) : 0;
+      if (this.charging > 0) { spd = (sp.speed.swim || 8) * 1.8; G.abilities.chargeHit(c); if (Math.random() < 0.5) G.fx.burst(c.pos.x, c.pos.y, c.pos.z, 'bubble', 2, { scale: 1.5 }); }
       const maxDepth = Math.max(4, sp.dive || 12);
       c.stepSwim(dt, dir, fighting ? spd * 0.3 : spd, { breach: c.has('leap'), maxDepth,
         onTooDeep: () => { if (!this._deepWarn || G.time - this._deepWarn > 4) { this._deepWarn = G.time; G.ui.toast(sp.name + ' cannot dive any deeper (' + maxDepth + ' m).', 'warn'); } },
