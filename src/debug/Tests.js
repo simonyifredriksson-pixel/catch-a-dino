@@ -107,6 +107,27 @@ export async function shot(G, name, P) {
       sim(G, num(P, 't', 2));
       break;
     }
+    case 'livewalk': {
+      // the real loop (rendering on, real frame times): walk out of the gate and log where we are
+      const el = document.createElement('pre');
+      el.style.cssText = 'position:fixed;left:0;top:0;right:0;z-index:999;background:rgba(0,0,0,.85);color:#fff;font:12px monospace;padding:8px;margin:0;white-space:pre-wrap';
+      document.body.appendChild(el);
+      const log = [];
+      const tp0 = G.teleport.bind(G); G.teleport = (...a) => { log.push('TELEPORT(' + a.slice(0, 3).join(',') + ') <- ' + new Error().stack.split('\n').slice(2, 5).map(s => s.trim()).join(' < ')); return tp0(...a); };
+      const hit0 = Pl.hit.bind(Pl); Pl.hit = (...a) => { log.push('HIT ' + a[3]); return hit0(...a); };
+      const T0 = performance.now(); let lastP = Pl.pos.clone();
+      G.input.keys.add('KeyW'); G.cam.yaw = Math.PI;   // face south, out of the gate
+      const tick = () => {
+        const t = (performance.now() - T0) / 1000, p = Pl.pos;
+        const jump = p.distanceTo(lastP); lastP = p.clone();
+        log.push(t.toFixed(1) + 's ' + p.x.toFixed(1) + ',' + p.z.toFixed(1) + ',' + p.y.toFixed(1) + ' ' + Pl.mode + (jump > 4 ? ' JUMP ' + jump.toFixed(0) + 'm' : '') + ' ko ' + (Pl.koT > 0) + ' hearts ' + Pl.hearts + ' panel ' + (G.ui.panel || G.panels.k || '-') + ' phase ' + G.phase + (G.inInterior ? ' IN ' + G.inInterior.id : ''));
+        const wp = G.quests.waypoint(); if (wp && t < 14) { G.input.keys.add('KeyW'); G.cam.yaw = Math.atan2(wp.x - p.x, wp.z - p.z) + Math.PI; } else G.input.keys.delete('KeyW');
+        el.textContent = log.slice(-60).join('\n') + '\n' + (window.__logs || []).filter(l => /^(ERR|REJ|UPDATE)/.test(l)).join('\n');
+        if (t < 20) setTimeout(tick, 500);
+      };
+      tick();
+      break;
+    }
     default: sim(G, num(P, 't', 2));
   }
   if (P.has('hud') && P.get('hud') === '0') G.hideHud = true;
