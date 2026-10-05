@@ -24,14 +24,21 @@ const isSwim = r => SP[r.sp]?.move === 'swim';
 const wild = r => !r.starter && !r.gift;
 const exAt = (g, id) => g.W.zoo.exhibits.find(e => e.id === id);
 const dockEnd = { x: DOCK.x, z: DOCK.z + DOCK.len - 2, label: 'Dock' };
+/** the arrow leads to the start of the pier first, then out along it */
+function dockWay(g) {
+  const D = g.landmarks?.dock, P = g.player.pos;
+  if (!D) return dockEnd;
+  const onPier = Math.abs(P.x - D.x) < D.hw + 0.6 && P.z > D.z0 - 1 && P.y > D.y - 0.6;
+  return onPier || P.z > D.z0 + 4 ? dockEnd : { x: D.x, z: D.z0, label: 'Dock' };
+}
 
 export const QUESTS = [
-  { id: 'dock', tut: true, title: 'Down to the water', text: 'Walk to the end of the dock, south of the zoo.', hint: 'Follow the arrow. WASD to walk, SHIFT to sprint.',
+  { id: 'dock', tut: true, title: 'Down to the water', text: 'Walk to the end of the dock, south of the zoo.', hint: 'Follow the arrow. WASD to walk, SHIFT to sprint. Fell in? Swim to the pier and press SPACE to climb up.',
     say: 'Welcome to Home Island, ranger! I am Professor Bramble. Your zoo is small, but the world out there is full of creatures. Let us start at the water - meet me on the dock.',
-    at: () => dockEnd, check: g => near(g, dockEnd, 9), pay: 50 },
+    at: dockWay, check: g => near(g, dockEnd, 9), pay: 50 },
   { id: 'fish', tut: true, title: 'Something in the lagoon', text: 'Pick the Reed Rod (2). Hold LMB to charge, release to cast. Wait for a bite, then CLICK right away.', hint: 'Then HOLD LMB to reel and keep the fish in the green zone. Watch for shadows and bubbles - fish are where the signs are.',
     say: 'The Glass Lagoon is full of life. Cast your rod, wait for the float to bob - and when it dips, click! Small fish come easy. Big ones... you will know.',
-    at: () => dockEnd, check: g => recs(g).some(r => isSwim(r) && wild(r)), pay: 150 },
+    at: dockWay, check: g => recs(g).some(r => isSwim(r) && wild(r)), pay: 150 },
   { id: 'unload', tut: true, title: 'Bring it home', text: 'Walk to the Ranger Station and unload your crate (E, then Animals).', hint: 'Everything you catch rides in your crate until you unload it.',
     say: 'A fine catch! Take it to the Ranger Station - that is where your animals, the shop and the upgrades are.',
     at: () => ({ x: STATION.x, z: STATION.z + 5, label: 'Station' }), check: g => recs(g).some(r => isSwim(r) && wild(r) && !r.at.startsWith('pack:')), pay: 100 },
@@ -43,7 +50,7 @@ export const QUESTS = [
     check: g => g.W.stats.zooPaid >= 2, pay: 0 },
   { id: 'shelly', tut: true, title: 'Shelly the Archelon', text: 'Shelly is in your crate. Stand at the end of the dock and summon her from the hotbar, then press E to climb on.', hint: 'Sea creatures can only be summoned in water deep enough to swim.',
     say: 'This is Shelly, my old Archelon. She is slow, but she swims anywhere. Call her at the end of the dock and climb aboard!',
-    at: () => dockEnd, check: g => g.player.mount?.spId === 'archelon' || [...g.remotes.values()].some(R => R.st?.m?.sp === 'archelon'), pay: 100 },
+    at: dockWay, check: g => g.player.mount?.spId === 'archelon' || [...g.remotes.values()].some(R => R.st?.m?.sp === 'archelon'), pay: 100 },
   { id: 'cross', tut: true, title: 'Across the lagoon', text: 'Ride Shelly north across the lagoon to the Fernvale Shore.', hint: 'W to swim where you look, SPACE up, CTRL down. Rivers lead inland from every shore.',
     say: 'North is the Fernvale Shore - easy dinosaurs, perfect for a first lasso. Beyond it the jungle, east the mountains, south the swamp, west the open sea. The farther you go, the rarer it gets.',
     at: () => ({ x: 0, z: -560, label: 'Fernvale' }), check: g => g.players().some(p => p.pos.z < -505 && Math.abs(p.pos.x) < 420 && g.terrain.ground(p.pos.x, p.pos.z) > -0.5), pay: 150 },

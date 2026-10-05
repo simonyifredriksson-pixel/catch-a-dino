@@ -87,7 +87,16 @@ export class Player {
     const boots = this.upg('boots').stam;
     const sprint = input.held('ShiftLeft') && moving && this.stamina > 0.02 && !this.crouch;
     const depth = -T.ground(this.pos.x, this.pos.z);
-    const swim = depth > 1.25;
+    const deckHere = G.colliders.floorAt(this.pos.x, this.pos.z, this.pos.y, 0.7);
+    let swim = depth > 1.25 && !(deckHere > -1 && this.pos.y >= deckHere - 0.3);   // walking on a dock is not swimming
+    // in the water by a dock or platform: SPACE climbs up onto it
+    if (swim && input.pressed('Space')) {
+      for (let k = 0; k < 8; k++) {
+        const a = k / 8 * Math.PI * 2, x = this.pos.x + Math.sin(a) * 1.3, z = this.pos.z + Math.cos(a) * 1.3;
+        const f = G.colliders.floorAt(x, z, this.pos.y + 3.4, 0);
+        if (f > this.pos.y && f < this.pos.y + 3.4) { this.pos.set(x, f, z); this.vel.set(0, 0, 0); this.onGround = true; swim = false; G.audio.jump(); break; }
+      }
+    }
     this.mode = swim ? 'swim' : 'foot';
     let speed = swim ? (sprint ? 4.6 : 3.2) : this.crouch ? 2.2 : sprint ? 8.2 : 4.7;
     if (G.catching.busy) speed *= G.catching.moveMul;

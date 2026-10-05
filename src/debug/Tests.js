@@ -306,6 +306,50 @@ const SUITES = {
     t.ok('a shadow shows over a swimmer', G.signs.shadows.some(s => s.visible));
     t.ok('rarer far from home', (() => { const w = (x, z) => { const ctx = G.wild._ctx(x, z); return G.wild.weights(ctx, 'swim').filter(e => e.sp.rarity === 'epic' || e.sp.rarity === 'legendary').reduce((a, e) => a + e.w, 0) / Math.max(1e-6, G.wild.weights(ctx, 'swim').reduce((a, e) => a + e.w, 0)); }; const a = w(0, 330), b = w(-1000, 100); return b > a; })());
     G.wild.remove(c);
+    // the lagoon is safe: no hunters spawn there, and none hunt you near home
+    const lag = G.wild.weights(G.wild._ctx(0, 380), 'swim');
+    t.ok('no aggressive swimmers spawn in the lagoon (' + lag.map(e => e.sp.id).join(',') + ')', lag.length > 0 && !lag.some(e => e.sp.temper === 'aggressive'));
+    G.teleport(0, 380, null); sim(G, 0.5);
+    const x = G.wild.add({ sp: 'xiphac', x: G.player.pos.x + 8, z: G.player.pos.z, y: -2, size: 0.5 });
+    let bit = 0; const hp0 = G.hitPlayer.bind(G); G.hitPlayer = (...a) => { bit++; return hp0(...a); };
+    sim(G, 20); G.hitPlayer = hp0; G.wild.remove(x);
+    t.ok('a predator fish in the lagoon leaves a swimmer alone (bites ' + bit + ', mode ' + G.player.mode + ')', bit === 0 && G.player.mode === 'swim');
+    // climb out of the water onto the dock
+    const D = G.landmarks.dock;
+    G.teleport(D.x + D.hw + 0.9, D.z - 8, null); G.input.keys.add('Space'); sim(G, 3); G.input.keys.delete('Space'); sim(G, 0.3);
+    const y0 = G.player.pos.y;
+    G.input.fake('Space', true); sim(G, 0.05); G.input.fake('Space', false); sim(G, 0.5);
+    t.ok('SPACE climbs from the water onto the dock (y ' + y0.toFixed(1) + ' -> ' + G.player.pos.y.toFixed(1) + ', ' + G.player.mode + ')', y0 < 0 && G.player.pos.y > 1 && G.player.mode === 'foot');
+  },
+  portals(t, G) {
+    t.ok('portals: ' + G.landmarks.portals.map(p => p.id + '@' + p.x.toFixed(0) + ',' + p.z.toFixed(0) + ',y' + (p.y ?? 0).toFixed(1) + ' r' + p.r + (p.gate ? ' gate ' + p.gate + (G.landmarks.gates[p.gate]?.open ? ' open' : ' shut') : '')).join(' | '), true);
+    t.ok('waypoints: ' + QUESTS.filter(q => q.at).map(q => { G.W.quest = QUESTS.indexOf(q); const w = G.quests.waypoint(); return q.id + '@' + (w ? w.x.toFixed(0) + ',' + w.z.toFixed(0) : '-'); }).join(' | '), true);
+    G.W.quest = 0;
+  },
+  walk(t, G) {
+    // walk from spawn to the tutorial waypoint, like a new player would
+    const P = G.player, log = [];
+    G.W.quest = 0;
+    const hit0 = P.hit.bind(P); P.hit = (...a) => { log.push('HIT ' + a[3] + ' at ' + P.pos.x.toFixed(0) + ',' + P.pos.z.toFixed(0) + ',' + P.pos.y.toFixed(1)); return hit0(...a); };
+    const tp0 = G.teleport.bind(G); G.teleport = (...a) => { log.push('TELEPORT ' + a.slice(0, 3).join(',') + ' from ' + P.pos.x.toFixed(0) + ',' + P.pos.z.toFixed(0) + ' ' + new Error().stack.split('\n')[2].trim()); return tp0(...a); };
+    G.input.keys.add('KeyW');
+    let reached = false;
+    for (let i = 0; i < 90 * 10; i++) {
+      const wp = G.quests.waypoint() || { x: DOCK.x, z: DOCK.z + DOCK.len };
+      const a = Math.atan2(wp.x - P.pos.x, wp.z - P.pos.z); G.cam.yaw = a + Math.PI;
+      sim(G, 0.1);
+      if (i % 20 === 0) log.push('t' + (i / 10) + ' ' + P.pos.x.toFixed(0) + ',' + P.pos.z.toFixed(0) + ',' + P.pos.y.toFixed(1) + ' ' + P.mode + ' hearts ' + P.hearts + ' q ' + G.quests.current?.id);
+      if (G.quests.current?.id !== 'dock') { reached = true; break; }
+    }
+    G.input.keys.clear();
+    t.ok('walked to the dock, along the pier (y ' + P.pos.y.toFixed(1) + '): ' + log.join(' | '), reached && P.pos.y > 1);
+    // now hang around in the water there, like someone fishing would
+    log.length = 0;
+    const hp0 = G.hitPlayer.bind(G); G.hitPlayer = (pid, c, d) => { log.push('ATTACK by ' + c?.spId + ' (' + c?.sp.temper + ')'); return hp0(pid, c, d); };
+    for (let i = 0; i < 900; i++) { sim(G, 0.1); if (i % 100 === 0) log.push('t' + i / 10 + ' ' + P.pos.x.toFixed(0) + ',' + P.pos.z.toFixed(0) + ',' + P.pos.y.toFixed(1) + ' ' + P.mode + ' breath ' + P.breath.toFixed(1) + ' hearts ' + P.hearts + ' ko ' + (P.koT > 0)); }
+    const near = G.wild.list.filter(c => Math.hypot(c.pos.x - P.pos.x, c.pos.z - P.pos.z) < 80).map(c => c.spId + ':' + c.sp.temper);
+    t.ok('90 s in the water by the dock, no trip home: ' + log.join(' | ') + ' || nearby: ' + near.join(','), !log.some(l => l.startsWith('TELEPORT')));
+    P.hit = hit0; G.teleport = tp0; G.hitPlayer = hp0;
   },
   spawn(t, G) {
     sim(G, 8);

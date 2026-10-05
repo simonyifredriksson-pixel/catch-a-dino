@@ -299,7 +299,7 @@ export class Landmarks {
     G.box(D.x, zc, 2.1, L / 2, 0, deck - 3, deck, 'dock', true);
     G.box(D.x, z1 + 2, 6, 3, 0, deck - 3, deck, 'dock', true);
     const s = signMesh(['DOCK'], 2.6, 0.9, { bg: '#f6ecd0', fg: '#2a5a8a', double: true }); s.position.set(D.x - 2.8, deck + 1.6, z0 - 2); s.rotation.y = 0; this.scene.add(s);
-    this.dock = { x: D.x, z: z1 + 3, y: deck };
+    this.dock = { x: D.x, z: z1 + 3, y: deck, z0: z0 - 3, hw: 2.1 };
     this.items.push({ id: 'dock', x: D.x, y: deck, z: z1 + 2, r: 6, label: () => 'The Dock - cast your rod from here, or call out a swimmer from your hotbar', act: () => this.g.ui.toast('Hold your rod (2) and cast into the lagoon - or press a swimmer\'s hotbar number to ride it.', 'info') });
     this.g.scatter.exclude.push({ x: D.x, z: D.z, r: 22 });
   }
