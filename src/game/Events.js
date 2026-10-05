@@ -136,7 +136,7 @@ export class Events {
     const x = ZOO.x + Math.cos(a) * R, z = ZOO.z + Math.sin(a) * R;
     const cs = G.wild.spawnHerd(S, x, z, {}, { quiet: true });
     for (const c of cs || []) { c.ai.st = 'hunt'; c.ai.t = 60; c.ai.target = G.me; c.event = 'raid'; c.ai.homeR = 20; }
-    G.event({ k: 'banner', t: (S.herd[1] > 1 ? 'A PACK OF ' : 'A WILD ') + S.name.toUpperCase() + (S.herd[1] > 1 ? 'S' : '') + ' IS RAIDING THE ZOO!', s: 'Catch it before it scares off every visitor - or roar it away.', kind: 'bad' });
+    G.event({ k: 'banner', t: (S.herd[1] > 1 ? 'A PACK OF ' : 'A WILD ') + S.name.toUpperCase() + (S.herd[1] > 1 ? 'S' : '') + ' IS RAIDING THE ZOO!', s: 'Catch it before it upsets your animals - or roar it away.', kind: 'bad' });
     G.audio.alarm();
     this.active.raid = { t: 120, cs };
   }

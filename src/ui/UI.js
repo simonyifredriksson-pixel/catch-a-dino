@@ -2,7 +2,7 @@
 
    top left      what to do next (quest), with a hint
    top centre    the compass: N/E/S/W, the zoo, lit beacons, marked creatures
-   top right     money, zoo stars and appeal, visitors, the clock and weather
+   top right     money, zoo stars and income per minute, the clock and weather
    bottom left   hearts, breath, cold; your mount: name, stamina, its keys
    centre        crosshair, and a nameplate for the creature under it (name,
                  rarity, and how hard it would be with what you are holding)

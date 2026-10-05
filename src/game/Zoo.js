@@ -5,14 +5,13 @@
    staring at it. Aggressive predators outside a predator paddock get
    restless - and restless tyrants BREAK OUT (then you get to catch them again).
    APPEAL = sum over animals of species appeal x colour bonus x happiness,
-   plus decor and facilities. It sets the zoo's STAR LEVEL (unlocks), how
-   many visitors come, and the ticket price.
-   MONEY: tickets as visitors arrive, spending at stalls and shops, tips when
-   an animal does something spectacular in front of a crowd. While you are
-   out exploring the zoo keeps earning (counted, not simulated).
+   plus decor and facilities.
+   INCOME ($/min) comes from appeal: the zoo pays out by itself every few
+   seconds, wherever you are. Income sets the STAR LEVEL (unlocks). There
+   are no visitors to manage.
 
    Animals in exhibits wander inside the fence, eat at the trough, nap, sleep
-   at night, roar at the crowd; swimmers circle their tank, flyers their dome. */
+   at night, roar now and then; swimmers circle their tank, flyers their dome. */
 import * as THREE from '../../lib/three.module.js';
 import { Creature } from './Creature.js';
 import { SP, RARITY, SIZE, VARIANTS } from '../data/Species.js';
@@ -44,7 +43,7 @@ export class Zoo {
     this.decor = new Map();     // decor id -> { d, group, col }
     this.creatures = [];        // Creature entities living here
     this.byUid = new Map();
-    this.appeal = 0; this.level = 0; this.visitorsWant = 0;
+    this.appeal = 0; this.level = 0;
     this.incomeT = 0; this.rate = 0;
     this.pathMesh = null;
   }

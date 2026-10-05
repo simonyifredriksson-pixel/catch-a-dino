@@ -1,12 +1,12 @@
-/* PeopleArt.js - the humans: you, your friends and the zoo's visitors.
+/* PeopleArt.js - the humans: you and your friends.
 
    A small rigid rig (pivots for hips, chest, head, arms, forearms, legs,
    shins) built from faceted parts, with procedural poses:
      walk / run / sneak / idle, jump, swim, ride (astride a saddle), throw
      (wind-up and release), pull (leaning back on a rope), dragged (heels in,
      sliding), cheer, photo (camera up), point, ko (flat on the back), sit.
-   Explorers wear a safari hat and a crate pack; visitors get random
-   outfits, hair, hats, kids are smaller. */
+   Explorers are blocky cowboys (four looks). The random-outfit path
+   (o.visitor) is left over from the old visitor crowds and is unused. */
 import * as THREE from '../../lib/three.module.js';
 import { geo, mat4, Mesher } from './Mesher.js';
 import { clamp, damp, lerp, rng } from '../core/Util.js';
