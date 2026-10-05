@@ -412,6 +412,12 @@ const SUITES = {
     t.ok('admin panel renders every tab', document.querySelectorAll('.pbody.admin button').length > 5); G.panels.close();
     G.teleport(ZOO.x, ZOO.z + 40, null); sim(G, 0.3);
   },
+  hudcheck(t, G) {
+    sim(G, 4);
+    const h = document.getElementById('hud');
+    t.ok('hud class=[' + h.className + '] hideHud=' + G.hideHud + ' build=' + G.build.active + ' phase=' + G.phase + ' obj=' + JSON.stringify(G.quests.objective()).slice(0, 300), !h.classList.contains('hidden'));
+    t.ok('logs: ' + (window.__logs || []).filter(l => /^(ERR|REJ|UPDATE)/.test(l)).join(' | '), true);
+  },
   cardcheck(t, G) {
     let err = ''; try { G.ui.catchCard(creatureRecord('glowtail', { kg: 30 }), { isNew: true, reward: 100, where: 'test' }); } catch (e) { err = e.message + ' ' + e.stack.split('\n')[1]; }
     t.ok('catch card renders (' + (err || document.getElementById('catchcard').textContent.slice(0, 160)) + ')', !err && document.getElementById('catchcard').classList.contains('on'));

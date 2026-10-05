@@ -58,6 +58,7 @@ export class UI {
       <div id="floaters"></div>
       <div id="frost"></div><div id="hurt"></div>
       <div id="say"><div class="sf"></div><div class="sn"></div><div class="sx"></div></div>
+      <div id="tutnow"><div class="tl"></div><div class="tx"></div></div>
       <div id="sneak">SNEAKING - quieter, easier snares</div>
       <div id="bite">BITE!</div>
       <div id="faint"><div class="fn"></div><div class="fk"><span><b class="key">E</b> Catch it</span><span><b class="key">Q</b> Let it go</span></div><div class="ft"><i></i></div></div>
@@ -147,7 +148,7 @@ export class UI {
     if (this.biteT > 0) { this.biteT -= dt; if (this.biteT <= 0 || Fh.state !== 'bite') { this.biteT = 0; $('bite').classList.remove('on'); } }
     $('sneak').classList.toggle('on', !!P.crouch && !P.mount);
     if (this.cardT > 0) { this.cardT -= dt; if (this.cardT <= 0 || G.input.pressedRaw('KeyE') && this.cardT < 8.5) this.closeCard(); }
-    this.root.classList.toggle('hidden', G.phase !== 'play' || !!G.build?.active || G.hideHud);
+    this.root.classList.toggle('hidden', G.phase !== 'play' || !!G.build?.active || !!G.hideHud);
     // ----- catching
     const C = G.catching.hud();
     const fz = C.state === 'faint' && C.c, FZ = $('faint');
@@ -261,7 +262,11 @@ export class UI {
     $('clock').innerHTML = `<b>Day ${W.day}</b> ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')} &middot; ${wi}<div class="rg">${esc(G.inInterior ? G.inInterior.name : BIOMES[b]?.name || '')}${!G.inInterior && BIOMES[b] ? ` <span class="dz d${BIOMES[b].danger}" title="Danger">${dots(BIOMES[b].danger)}</span>` : ''}</div>`;
     const O = G.quests.objective();
     const nowEl = $('obj').querySelector('.onow'), nowH = O.now ? '<b>DO THIS NOW</b>' + esc(O.now).replace(/\[([^\]]+)\]/g, '<b class="key">$1</b>') : '';
-    if (nowH !== this._now) { this._now = nowH; nowEl.innerHTML = nowH; nowEl.style.display = nowH ? '' : 'none'; }
+    if (nowH !== this._now) {
+      this._now = nowH; nowEl.innerHTML = nowH; nowEl.style.display = nowH ? '' : 'none';
+      const TN = $('tutnow'); TN.classList.toggle('on', !!O.now);
+      if (O.now) { TN.querySelector('.tl').textContent = O.title; TN.querySelector('.tx').innerHTML = esc(O.now).replace(/\[([^\]]+)\]/g, '<b class="key">$1</b>'); TN.classList.remove('pop'); void TN.offsetWidth; TN.classList.add('pop'); }
+    }
     const ok = JSON.stringify({ ...O, now: 0 });
     if (ok !== this._ok) { this._ok = ok; $('obj').querySelector('.ot').textContent = O.title; $('obj').querySelector('.ox').textContent = O.text; $('obj').querySelector('.oh').textContent = (O.hint || '') + (G.quests.inTutorial ? '  (H: hear the professor again)' : ''); $('obj').classList.remove('pop'); void $('obj').offsetWidth; $('obj').classList.add('pop'); }
   }
