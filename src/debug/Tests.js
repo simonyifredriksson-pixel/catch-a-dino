@@ -14,6 +14,7 @@ import { creatureRecord } from '../game/State.js';
 import { ZOO, DOCK, GROTTO } from '../data/Biomes.js';
 import { QUESTS, TUT_END } from '../game/Quests.js';
 import { INTERIORS } from '../data/Places.js';
+import { TOOLS } from '../data/Tools.js';
 
 export function sim(G, seconds, dt = 1 / 30) { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) { G.update(dt); G.input.endFrame(); } }
 const num = (P, k, d) => (P.has(k) ? +P.get(k) : d);
@@ -80,7 +81,7 @@ export async function shot(G, name, P) {
     }
     case 'build': { at(ZOO.x, ZOO.z + 30, 0); sim(G, 0.5); G.build.toggle(); if (P.has('cat')) { G.build.cat = P.get('cat'); G.build.render(); } G.build.mouse.set(0, -0.1); sim(G, 1); break; }
     case 'region': { sim(G, 0.3); G.ui.region('Mount Cinder', 'The mountain is awake', 'volcano'); sim(G, 0.6); break; }
-    case 'dex': case 'map': case 'station': case 'pause': case 'journal': {
+    case 'dex': case 'map': case 'station': case 'pause': case 'journal': case 'admin': {
       if (name === 'journal') for (const [sp, b, d] of [['trex', 'valley', 6], ['proto', 'meadow', 2], ['coel', 'lake', 1], ['plesio', 'lake', 3], ['ptera', 'peaks', 4]]) { G.W.journal.unshift({ sp, v: null, kg: SP[sp].kg[1], size: 0.7, b, day: d, tod: 0.4 + d * 0.05, fish: SP[sp].move === 'swim' }); G.W.dex[sp] = { seen: 1, caught: 1 }; }
       if (P.has('give')) for (const s of P.get('give').split(',')) { give(G, s); G.W.dex[s] = { seen: 1, caught: 1 }; }
       if (name === 'map') for (let i = 0; i < G.explored.bits.length; i++) G.explored.bits[i] = Math.random() < 0.5 ? 1 : 0;
@@ -341,6 +342,35 @@ const SUITES = {
     G.input.fake('Space', true); sim(G, 0.05); G.input.fake('Space', false); sim(G, 0.5);
     t.ok('SPACE climbs from the water onto the dock (y ' + y0.toFixed(1) + ' -> ' + G.player.pos.y.toFixed(1) + ', ' + G.player.mode + ')', y0 < 0 && G.player.pos.y > 1 && G.player.mode === 'foot');
   },
+  admin(t, G) {
+    const W = G.W, P = G.player, m0 = W.money;
+    G.adminCmd('money', 100000); sim(G, 0.1);
+    t.ok('admin money (+' + (W.money - m0) + ')', W.money - m0 >= 100000);
+    const n0 = Object.keys(W.creatures).length;
+    G.adminCmd('give', 'trex'); sim(G, 0.1);
+    t.ok('admin gives a T-Rex', Object.keys(W.creatures).length === n0 + 1 && Object.values(W.creatures).some(r => r.sp === 'trex'));
+    G.adminCmd('god'); const h0 = P.hearts; P.hit(new THREE.Vector3(1, 0, 0), 10, 3, 'test'); sim(G, 0.1);
+    t.ok('invincible: no damage', P.hearts === h0 && G.admin.god);
+    G.adminCmd('god');
+    G.adminCmd('speed', 4); const p0 = P.pos.clone(); G.cam.yaw = Math.PI; G.input.keys.add('KeyW'); sim(G, 1); G.input.keys.delete('KeyW');
+    t.ok('speed x4 (' + P.pos.distanceTo(p0).toFixed(1) + ' m in 1 s)', P.pos.distanceTo(p0) > 12);
+    G.adminCmd('speed', 1);
+    G.adminCmd('fly'); const y0 = P.pos.y; G.input.keys.add('Space'); sim(G, 1); G.input.keys.delete('Space');
+    t.ok('fly mode goes up (' + (P.pos.y - y0).toFixed(1) + ' m)', P.pos.y - y0 > 10);
+    const hb = P.hearts; G.adminCmd('fly'); sim(G, 4);
+    t.ok('fly off: back on the ground, no fall damage (y above ground ' + (P.pos.y - G.terrain.ground(P.pos.x, P.pos.z)).toFixed(1) + ', mode ' + P.mode + ')', P.pos.y - Math.max(G.terrain.ground(P.pos.x, P.pos.z), G.colliders.floorAt(P.pos.x, P.pos.z, P.pos.y, 0.7)) < 1.5 && P.hearts === hb);
+    G.adminCmd('tp', '0,-600'); sim(G, 0.3);
+    t.ok('teleport (' + P.pos.x.toFixed(0) + ',' + P.pos.z.toFixed(0) + ')', Math.hypot(P.pos.x, P.pos.z + 600) < 3);
+    G.adminCmd('stars', 5); sim(G, 0.1);
+    t.ok('zoo stars set to 5', G.zoo.level === 5);
+    G.adminCmd('stars', 0); G.adminCmd('tools'); sim(G, 0.1);
+    t.ok('every tool', Object.keys(TOOLS).every(k => W.tools[k]));
+    G.adminCmd('spawn', 'proto'); sim(G, 0.2);
+    t.ok('spawn a wild Protoceratops in front', G.wild.list.some(c => c.spId === 'proto' && c.pos.distanceTo(P.pos) < 20));
+    G.panels.open('admin'); for (const tb of ['me', 'stuff', 'dinos', 'tp', 'world']) { G.panels.tab = tb; G.panels.render(); }
+    t.ok('admin panel renders every tab', document.querySelectorAll('.pbody.admin button').length > 5); G.panels.close();
+    G.teleport(ZOO.x, ZOO.z + 40, null); sim(G, 0.3);
+  },
   fossils(t, G) {
     const F = G.fossils, by = {};
     for (const f of F.list) by[f.kind] = (by[f.kind] || 0) + 1;
@@ -390,7 +420,7 @@ const SUITES = {
     t.ok('stampede event', !!G.events.active.stampede);
   },
 };
-SUITES.all = (t, G) => { for (const k of ['core', 'tutorial', 'ride', 'catch', 'throw', 'fish', 'zoo', 'world', 'water', 'spawn']) { t.section(k); try { SUITES[k](t, G); } catch (e) { t.ok(k + ' threw: ' + e.message + ' ' + (e.stack || '').split('\n')[1], false); } } };
+SUITES.all = (t, G) => { for (const k of ['core', 'tutorial', 'ride', 'catch', 'throw', 'fish', 'zoo', 'world', 'water', 'admin', 'spawn']) { t.section(k); try { SUITES[k](t, G); } catch (e) { t.ok(k + ' threw: ' + e.message + ' ' + (e.stack || '').split('\n')[1], false); } } };
 
 export function run(G, name) {
   const out = []; let pass = 0, fail = 0;

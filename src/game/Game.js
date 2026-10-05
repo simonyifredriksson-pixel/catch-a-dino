@@ -21,7 +21,7 @@ import { Mesher } from '../art/Mesher.js';
 import { holdModel } from '../art/ToolArt.js';
 import { makeHuman } from '../art/PeopleArt.js';
 import { Effects } from './Effects.js';
-import { Player } from './Player.js';
+import { Player, HEARTS } from './Player.js';
 import { CameraRig } from './Camera.js';
 import { Catching } from './Catching.js';
 import { Tools } from './Tools.js';
@@ -280,6 +280,50 @@ export class Game {
   }
   onZooLevel(lv) { this.event({ k: 'banner', t: 'ZOO LEVEL UP! ' + '★'.repeat(lv), s: this.zoo.levelName + ' - new things to build and buy at the Ranger Station.', kind: 'good' }); this.event({ k: 'fanfare' }); }
 
+  /* ---------------- the admin panel ---------------- */
+  adminCmd(cmd, arg) {
+    const A = this.admin ||= {}, P = this.player;
+    const flip = k => { A[k] = !A[k]; this.ui.toast(k + (A[k] ? ' ON' : ' OFF'), 'info'); };
+    switch (cmd) {
+      case 'god': return flip('god');
+      case 'fly': flip('fly'); if (!A.fly) { P.vel.set(0, 0, 0); P.onGround = false; P.safeFall = true; } return;
+      case 'auto': return flip('autoCatch');
+      case 'speed': A.speed = +arg; return this.ui.toast('Speed x' + arg, 'info');
+      case 'heal': P.hearts = HEARTS; P.koT = 0; P.cold = 0; return;
+      case 'tp': {
+        const [x, z, inter] = arg.split(','); this.teleport(+x, +z, inter || null);
+        return;
+      }
+      case 'reveal': this.explored.bits.fill(1); return this.ui.toast('The whole map is revealed.', 'info');
+      case 'spawn': {
+        const f = this.camera.getWorldDirection(_v).setY(0).normalize(), x = P.pos.x + f.x * 14, z = P.pos.z + f.z * 14;
+        return this.act({ k: 'admin', cmd: 'spawn', sp: arg, x, z });
+      }
+      default: return this.act({ k: 'admin', cmd, arg });
+    }
+  }
+  _admin(a, pid) {
+    const W = this.W, owner = this.ownerOf(pid);
+    const give = (sp, v) => { const S = SP[sp]; const r = creatureRecord(sp, { v: v || null, size: 0.5 + Math.random() * 0.45, kg: Math.round(lerp(S.kg[0], S.kg[1], 0.7)), at: 'zoo' }); if (this.crateUsed(owner) + SIZE[S.size].crate <= this.crateCap(owner)) r.at = 'pack:' + owner; W.creatures[r.uid] = r; const d = W.dex[sp] ||= { seen: 0, caught: 0 }; d.seen++; d.caught++; if (v) { d.v ||= []; if (!d.v.includes(v)) d.v.push(v); } return r; };
+    switch (a.cmd) {
+      case 'money': W.money += +a.arg; this.audio.cash(); break;
+      case 'give': { const [sp, v] = String(a.arg).split(':'); const r = give(sp, v); this._to(pid, { k: 'toast', t: (v ? VARIANTS[v].name + ' ' : '') + SP[sp].name + (r.at === 'zoo' ? ' is in the holding pen (crate full).' : ' is in your crate!'), kind: 'good' }); break; }
+      case 'giveAll': for (const s of SPECIES) { const r = give(s.id); r.at = 'zoo'; } this._to(pid, { k: 'toast', t: 'One of every species is waiting in the holding pen.', kind: 'good' }); break;
+      case 'dexAll': for (const s of SPECIES) { const d = W.dex[s.id] ||= { seen: 0, caught: 0 }; d.seen = Math.max(1, d.seen); } break;
+      case 'tools': for (const k in TOOLS) W.tools[k] = 1; break;
+      case 'items': for (const k in ITEMS) if (ITEMS[k].kind === 'bait') W.items[k] = (W.items[k] || 0) + 20; break;
+      case 'upg': for (const k in UPGRADES) W.upg[k] = UPGRADES[k].levels.length - 1; break;
+      case 'stars': W.adminLevel = +a.arg; this.zoo.compute(); break;
+      case 'plot': W.plot = Math.min(PLOTS.length - 1, (W.plot || 0) + 1); this.zoo.rebuild(); this.event({ k: 'zoo' }); break;
+      case 'tod': W.tod = +a.arg; break;
+      case 'weather': W.weather.kind = a.arg; W.weather.t = 400; this.event({ k: 'weather', w: a.arg }); break;
+      case 'event': this.events.start(a.arg); break;
+      case 'skipTut': this.quests.skip(); break;
+      case 'spawn': { const c = this.wild.add({ sp: a.sp, x: a.x, z: a.z, y: this.terrain.ground(a.x, a.z), size: 0.5 + Math.random() * 0.4 }); if (SP[a.sp].move === 'swim') c.pos.y = Math.min(-1.5, this.terrain.ground(a.x, a.z) + 1); break; }
+    }
+    this.zoo.syncCreatures(); this.saveSoon();
+  }
+
   /* ---------------- actions ---------------- */
   act(a) {
     if (!this.W) return;
@@ -371,6 +415,7 @@ export class Game {
       }
       case 'throw': break;
       case 'skipTut': this.quests.skip(); break;
+      case 'admin': this._admin(a, pid); break;
     }
     this.saveSoon();
   }

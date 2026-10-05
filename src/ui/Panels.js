@@ -15,8 +15,8 @@ import { TOOLS, TOOL_ORDER, SIZE_RANK } from '../data/Tools.js';
 import { ITEMS, UPGRADES, UPGRADE_ORDER } from '../data/Items.js';
 import { ABILITIES } from '../data/Abilities.js';
 import { HABITATS, EX_SIZES, ZOO_LEVELS, ZOO_LEVEL_NAMES, PLOTS, DECOR } from '../data/Build.js';
-import { BIOMES, ZOO, WORLD_HALF } from '../data/Biomes.js';
-import { PLACES, BEACONS } from '../data/Places.js';
+import { BIOMES, ZOO, WORLD_HALF, REGIONS, ISLANDS, VALLEY, VOLCANO, TRENCH, GROTTO, DOCK } from '../data/Biomes.js';
+import { PLACES, BEACONS, INTERIORS } from '../data/Places.js';
 import { habitatOK } from '../game/Zoo.js';
 import { svg } from './Inventory.js';
 import { esc, money, fmtKg, clamp } from '../core/Util.js';
@@ -74,6 +74,8 @@ export class Panels {
     if (a === 'travel') { G.act({ k: 'travel', id: v }); return this.close(); }
     if (a === 'yes') { const y = this._yes; this.close(); if (y) y(); return; }
     if (a === 'no') return this.close();
+    if (a === 'adm') { const spawn = e.shiftKey && v === 'give'; G.adminCmd(spawn ? 'spawn' : v, spawn ? String(t.dataset.x).split(':')[0] : t.dataset.x); if (spawn) return this.close(); return setTimeout(() => this.render(), 60); }
+    if (a === 'admin') return this.open('admin');
     if (a === 'resume') return this.close();
     if (a === 'skipTut') { G.act({ k: 'skipTut' }); return this.close(); }
     if (a === 'quit') { G.saveNow(); location.reload(); return; }
@@ -176,6 +178,46 @@ export class Panels {
   }
 
   /* ---------------- the Dino Dex ---------------- */
+  /* ---------------- the admin panel ---------------- */
+  _admin() {
+    const G = this.g, W = this.W, A = G.admin || {}, tab = ['me', 'stuff', 'dinos', 'tp', 'world'].includes(this.tab) ? this.tab : 'me';
+    const b = (cmd, label, x = '', on = false) => `<button data-a="adm" data-v="${cmd}" data-x="${esc(String(x))}" class="${on ? 'on' : ''}">${label}</button>`;
+    let body = '';
+    if (tab === 'me') {
+      body += `<h3>You</h3><div class="abtns">${b('god', (A.god ? 'ON' : 'OFF') + ' &middot; Invincible', '', A.god)}${b('fly', (A.fly ? 'ON' : 'OFF') + ' &middot; Fly (SPACE up, CTRL down)', '', A.fly)}${b('auto', (A.autoCatch ? 'ON' : 'OFF') + ' &middot; Auto-catch', '', A.autoCatch)}${b('heal', 'Heal')}</div>`;
+      body += `<h3>Speed</h3><div class="abtns">${[1, 2, 4, 8].map(s => b('speed', 'x' + s, s, (A.speed || 1) === s)).join('')}</div>`;
+    }
+    if (tab === 'stuff') {
+      body += `<h3>Money <i>${money(W.money)}</i></h3><div class="abtns">${[1000, 10000, 100000, 1000000].map(m => b('money', '+' + money(m), m)).join('')}</div>`;
+      body += `<h3>Gear</h3><div class="abtns">${b('tools', 'Every tool')}${b('items', '+20 of every bait')}${b('upg', 'Max all upgrades')}${b('plot', 'Bigger zoo land')}</div>`;
+      body += `<h3>Zoo stars</h3><div class="abtns">${[0, 1, 2, 3, 4, 5, 6, 7].map(n => b('stars', n ? '&#9733;'.repeat(n) : 'none', n, (W.adminLevel || 0) === n)).join('')}</div>`;
+    }
+    if (tab === 'dinos') {
+      body += `<div class="abtns">${b('giveAll', 'One of every species')}${b('dexAll', 'Fill the Dino Dex')}</div><p class="dim">Click a creature to get it (crate, or the holding pen when the crate is full). Shift-click spawns it wild in front of you.</p>`;
+      body += '<div class="agrid">' + SPECIES.map(s => `<button data-a="adm" data-v="give" data-x="${s.id}" data-sp="${s.id}" title="${esc(s.name)}"><img src="${G.inv.icons.creature(s.id)}"><span>${esc(s.name)}</span><i style="color:${RARITY[s.rarity].css}">${'&#9733;'.repeat(RARITY[s.rarity].stars)}</i></button>`).join('') + '</div>';
+      body += `<h3>Rare colours</h3><div class="abtns">${Object.entries(VARIANTS).map(([k, V]) => b('give', V.name + ' T-Rex', 'trex:' + k)).join('')}</div>`;
+    }
+    if (tab === 'tp') {
+      const D = G.landmarks.dock, gp = G.zoo.gatePos();
+      const spots = [['Your zoo', gp.x, gp.z - 8], ['The dock', D.x, D.z - 2]];
+      const seenB = new Set();
+      for (const [bm, x, z, r] of REGIONS) if (r > 2 && !seenB.has(bm)) { seenB.add(bm); spots.push([BIOMES[bm].name, x, z]); }
+      for (const I of ISLANDS) if (I.id !== 'reef') spots.push([BIOMES[I.id]?.name || I.id, I.x, I.z]);
+      spots.push(['The Lost Valley', VALLEY.x, VALLEY.z], ['Mount Cinder (rim)', VOLCANO.x - VOLCANO.crater - 30, VOLCANO.z], ['Over the Trench', TRENCH.x, TRENCH.z], ['Turtle Grotto', GROTTO.x, GROTTO.z]);
+      body += '<h3>Lands</h3><div class="abtns">' + spots.map(([n, x, z]) => b('tp', esc(n), Math.round(x) + ',' + Math.round(z))).join('') + '</div>';
+      body += '<h3>Places</h3><div class="abtns">' + PLACES.map(p => b('tp', esc(p.name), Math.round(p.x + 6) + ',' + Math.round(p.z + 6))).join('') + '</div>';
+      body += '<h3>Caves</h3><div class="abtns">' + Object.entries(INTERIORS).map(([id, I]) => b('tp', esc(I.name), I.x + ',' + (I.z + I.r - 14) + ',' + id)).join('') + '</div>';
+    }
+    if (tab === 'world') {
+      body += `<h3>Time</h3><div class="abtns">${[['Morning', 0.3], ['Noon', 0.5], ['Evening', 0.72], ['Night', 0.95]].map(([n, t]) => b('tod', n, t)).join('')}</div>`;
+      body += `<h3>Weather</h3><div class="abtns">${['clear', 'cloudy', 'rain', 'storm'].map(w => b('weather', w[0].toUpperCase() + w.slice(1), w, W.weather.kind === w)).join('')}</div>`;
+      body += `<h3>Events</h3><div class="abtns">${['stampede', 'migration', 'golden', 'meteors', 'eruption', 'sea', 'raid', 'titan'].map(e => b('event', e[0].toUpperCase() + e.slice(1), e)).join('')}</div>`;
+      body += `<h3>Other</h3><div class="abtns">${b('reveal', 'Reveal the whole map')}${G.quests.inTutorial ? b('skipTut', 'Skip the tutorial') : ''}</div>`;
+    }
+    const tabs = [['me', 'Me'], ['stuff', 'Money & gear'], ['dinos', 'Dinosaurs'], ['tp', 'Teleport'], ['world', 'World']];
+    return `<div class="phead"><h2>Admin Panel</h2><div class="pmoney">${svg('coin')} ${money(W.money)}</div></div><div class="ptabs">${tabs.map(([k, n]) => `<button data-a="tab" data-v="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div><div class="pbody admin">${body}</div>`;
+  }
+
   /* ---------------- the field journal (your notes, no clues) ---------------- */
   _journal() {
     const G = this.g, W = this.W, tab = ['catches', 'records', 'places', 'totals'].includes(this.tab) ? this.tab : 'catches';
@@ -262,7 +304,7 @@ export class Panels {
     const room = G.net.isOnline ? `<p class="room">Co-op room code: <b>${esc(G.net.room)}</b> &middot; ${G.net.count} player${G.net.count > 1 ? 's' : ''}</p>` : '';
     const sl = (k, min, max, step, label) => `<label class="set">${label}<input type="range" min="${min}" max="${max}" step="${step}" value="${p[k]}" data-k="${k}"></label>`;
     return `<div class="phead"><h2>Paused</h2></div><div class="pbody">${room}
-      <button class="wide" data-a="resume">Back to the game</button>${G.quests.inTutorial ? '<button class="wide alt" data-a="skipTut">Skip the tutorial</button>' : ''}
+      <button class="wide" data-a="resume">Back to the game</button><button class="wide alt" data-a="admin">Admin panel (F2)</button>${G.quests.inTutorial ? '<button class="wide alt" data-a="skipTut">Skip the tutorial</button>' : ''}
       <h3>Settings</h3>${sl('sens', 0.2, 3, 0.05, 'Mouse sensitivity')}${sl('vol', 0, 1, 0.05, 'Volume')}${sl('music', 0, 1, 0.05, 'Music')}${sl('fov', 55, 95, 1, 'Field of view')}
       <label class="set">Invert mouse Y <button data-a="set" data-k="invert">${p.invert ? 'On' : 'Off'}</button></label>
       <label class="set">Shadows <button data-a="set" data-k="shadows">${p.shadows ? 'On' : 'Off'}</button></label>
@@ -285,12 +327,14 @@ export class Panels {
       if (I.pressedRaw('KeyJ') && this.k === 'dex') this.close();
       if (I.pressedRaw('KeyM') && this.k === 'map') this.close();
       if (I.pressedRaw('KeyN') && this.k === 'journal') this.close();
+      if (I.pressedRaw('F2') && this.k === 'admin') this.close();
       return;
     }
     if (G.phase !== 'play' || G.inv.open || G.build?.active || G.chatOpen) return;
     if (I.pressedRaw('KeyJ')) this.open('dex');
     if (I.pressedRaw('KeyM')) this.open('map');
     if (I.pressedRaw('KeyN') && G.W?.tools?.journal) this.open('journal');
+    if (I.pressedRaw('F2')) this.open('admin');
   }
 }
 void THREE;

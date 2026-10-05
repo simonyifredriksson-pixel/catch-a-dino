@@ -278,6 +278,7 @@ export class Zoo {
     // the income: what the zoo earns by itself, every minute, wherever you are
     this.income = Math.round(appeal * 2.5);
     let lv = 0; while (lv < ZOO_LEVELS.length - 1 && this.income >= ZOO_LEVELS[lv + 1]) lv++;
+    lv = Math.max(lv, Math.min(ZOO_LEVELS.length - 1, W.adminLevel || 0));   // admin panel
     if (lv > (W.zooLevel || 0)) { W.zooLevel = lv; this.g.onZooLevel(lv); }
     this.level = lv;
     return this.income;

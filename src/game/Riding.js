@@ -124,6 +124,7 @@ export class Riding {
     const sprintKey = !blocked && input.held('ShiftLeft') && moving;
     const fighting = G.catching.fighting;
     const stamMul = this.saddleMul();
+    if (G.admin?.god) this.stamina = 1;
     if (input.pressed('KeyE') && !blocked && !fighting) { this.dismount(); return; }
     if (input.pressed('KeyF') && !blocked) G.abilities.use(c);
     this.charging = Math.max(0, this.charging - dt); this.dashT = Math.max(0, this.dashT - dt);
@@ -141,7 +142,7 @@ export class Riding {
       dir.normalize();
       const sprint = sprintKey && this.stamina > 0.05;
       if (sprint) this.stamina = Math.max(0, this.stamina - dt * 0.16 / stamMul); else this.stamina = Math.min(1, this.stamina + dt * 0.2);
-      let spd = moving || input.held('Space') || input.held('ControlLeft') ? (sp.speed.swim || 8) * (sprint ? 1.35 : 0.85) : 0;
+      let spd = moving || input.held('Space') || input.held('ControlLeft') ? (sp.speed.swim || 8) * (sprint ? 1.35 : 0.85) * (G.admin?.speed || 1) : 0;
       if (this.charging > 0) { spd = (sp.speed.swim || 8) * 1.8; G.abilities.chargeHit(c); if (Math.random() < 0.5) G.fx.burst(c.pos.x, c.pos.y, c.pos.z, 'bubble', 2, { scale: 1.5 }); }
       const maxDepth = Math.max(4, sp.dive || 12);
       c.stepSwim(dt, dir, fighting ? spd * 0.3 : spd, { breach: c.has('leap'), maxDepth,
@@ -163,6 +164,7 @@ export class Riding {
       const flyV = sp.speed.fly || 20;
       let want = mz > 0 ? flyV * (boost ? 1.45 : 1) : mz < 0 ? flyV * 0.3 : Math.max(flyV * 0.45, c.speed * 0.995);
       if (this.dashT > 0) want = flyV * 2.2;
+      want *= G.admin?.speed || 1;
       // fly where you look: camera pitch sets the climb
       let climb = (mz > 0 ? -clamp(cam.pitch - 0.15, -0.9, 0.9) * want * 0.65 : -1.4) + (climbKey ? 8 : 0) - (dive ? 14 : 0);
       if (dive) want += 10;
@@ -186,6 +188,7 @@ export class Riding {
     let want = moving ? (sprint ? run * (sprintable ? 1 : 0.82) : trot) : 0;
     if (this.charging > 0) want = run * 1.25;
     if (fighting) want *= 0.35;
+    want *= G.admin?.speed || 1;
     const jump = !blocked && input.pressed('Space') && c.has('jump') && c.onGround && !c.inWater ? (sp.speed.jump || 7) : 0;
     if (jump) { G.audio.jump(); c.anim.play('chomp'); }
     c.stepGround(dt, moving || this.charging > 0 ? (this.charging > 0 && !moving ? c.yaw : heading) : c.yaw, want, {

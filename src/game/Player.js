@@ -42,7 +42,7 @@ export class Player {
 
   /** take a hit: knock back, lose a heart (sturdy mounts and short invulnerability protect you) */
   hit(dir, force = 6, hearts = 1, why = '') {
-    if (this.hurtT > 0 || this.koT > 0) return false;
+    if (this.hurtT > 0 || this.koT > 0 || this.g.admin?.god) return false;
     this.hurtT = 1.2;
     if (this.mount && !this.mount.has('sturdy') && force > 5) { this.g.riding.dismount(true); }
     if (!this.riding) { this.knock.copy(dir).setY(0).normalize().multiplyScalar(force); this.vel.y = Math.min(8, force * 0.6); this.onGround = false; }
@@ -75,6 +75,8 @@ export class Player {
     // slowly heal when nothing is biting
     if (this.hurtT <= 0 && this.hearts < HEARTS) { this.healT = (this.healT || 0) + dt; if (this.healT > 14) { this.healT = 0; this.hearts++; } }
     if (this.riding) { this._hazards(dt, true); return; }   // riding.js moves us
+    if (G.admin?.god) { this.stamina = 1; this.breath = Math.max(this.breath, 15); this.cold = 0; this.hearts = HEARTS; }
+    if (G.admin?.fly) return this._fly(dt, input);
     const fwd = cam.yaw;
     const mx = input.axis('KeyA', 'KeyD'), mz = input.axis('KeyS', 'KeyW');
     const wish = new THREE.Vector3(mx, 0, mz);
@@ -100,6 +102,7 @@ export class Player {
     this.mode = swim ? 'swim' : 'foot';
     let speed = swim ? (sprint ? 4.6 : 3.2) : this.crouch ? 2.2 : sprint ? 8.2 : 4.7;
     if (G.catching.busy) speed *= G.catching.moveMul;
+    speed *= G.admin?.speed || 1;
     if (this.cold > 0.5) speed *= 0.75;
     if (sprint) this.stamina = Math.max(0, this.stamina - dt * 0.17 / boots); else this.stamina = Math.min(1, this.stamina + dt * 0.22);
     const tvx = wx * speed, tvz = wz * speed;
@@ -138,8 +141,8 @@ export class Player {
         this.airT += dt;
         if (this.pos.y <= ground) {
           this.pos.y = ground;
-          if (this.vel.y < -19 && !this.gliding) this.hit(new THREE.Vector3(0, 1, 0), 0, 1, 'Ouch! That was a long way down.');
-          this.vel.y = 0; this.onGround = true; this.gliding = false; this.airT = 0;
+          if (this.vel.y < -19 && !this.gliding && !this.safeFall) this.hit(new THREE.Vector3(0, 1, 0), 0, 1, 'Ouch! That was a long way down.');
+          this.vel.y = 0; this.onGround = true; this.gliding = false; this.airT = 0; this.safeFall = false;
         }
       } else {
         if (ground < this.pos.y - 0.9) { this.onGround = false; this.vel.y = 0; }
@@ -164,6 +167,21 @@ export class Player {
     const sp = Math.hypot(this.vel.x, this.vel.z);
     this.cheerT = Math.max(0, this.cheerT - dt);
     this.rig.anim(dt, { speed: sp, air: !this.onGround && !swim && this.airT > 0.12, swim, crouch: this.crouch, ...this._A(), cheer: this.cheerT > 0, lookPitch: -cam.pitch * 0.4 });
+    this.place();
+  }
+  /** admin fly mode: go where the camera looks, through everything */
+  _fly(dt, input) {
+    const G = this.g, f = G.camera.getWorldDirection(_v).clone(), r = new THREE.Vector3(-f.z, 0, f.x).normalize();
+    const mz = input.axis('KeyS', 'KeyW'), mx = input.axis('KeyA', 'KeyD');
+    const sp = (input.held('ShiftLeft') ? 70 : 28) * (G.admin.speed || 1);
+    const d = f.multiplyScalar(mz).addScaledVector(r, mx);
+    if (input.held('Space')) d.y += 1; if (input.held('ControlLeft') || input.held('KeyQ')) d.y -= 1;
+    if (d.lengthSq() > 0.001) this.pos.addScaledVector(d.normalize(), sp * dt);
+    this.pos.y = Math.max(this.pos.y, G.terrain.ground(this.pos.x, this.pos.z) + 0.1);
+    this.vel.set(0, 0, 0); this.onGround = false; this.mode = 'foot'; this.under = false;
+    if (Math.abs(mx) + Math.abs(mz) > 0) this.yaw = Math.atan2(G.camera.getWorldDirection(_v).x, _v.z);
+    G.world.clampBounds(this.pos);
+    this.rig.anim(dt, { speed: 0, air: true, swim: false, ...this._A() });
     this.place();
   }
   _A() { const A = this.A; return { throw: A.throw, charge: A.charge, pull: A.pull, tension: A.tension, photo: A.photo, point: A.point, drag: A.drag, spin: A.spin }; }
