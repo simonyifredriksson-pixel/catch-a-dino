@@ -471,7 +471,7 @@ export class Catching {
   /* ---------------- outcomes ---------------- */
   _land() {
     const G = this.g, c = this.c, F = this.F;
-    const info = { id: c.id, sp: c.spId, v: c.v, size: c.size, kg: c.kg, perfect: F.perfect, time: F.t };
+    const info = { id: c.id, sp: c.spId, v: c.v, size: c.size, kg: c.kg, perfect: F.perfect, time: F.t, fishing: !!F.fishing, x: Math.round(c.pos.x), z: Math.round(c.pos.z) };
     G.audio.caught(RARITY[c.sp.rarity].stars);
     G.fx.burst(c.pos.x, c.pos.y + c.height * 0.6, c.pos.z, 'confetti', 40, { scale: 1.2 });
     G.fx.burst(c.pos.x, c.pos.y + c.height * 0.6, c.pos.z, 'spark', 20, { scale: 1.5 });

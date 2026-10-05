@@ -107,6 +107,7 @@ export const TOOLS = {
     desc: 'Glows faintly blue. Legends say it was made to land the thing at the bottom of the Trench.',
   },
   // ---- utilities
+  journal: { name: 'Field Journal', kind: 'util', behavior: 'journal', rarity: 'common', price: 0, level: 0, color: '#8a4a2a', desc: 'Your own notes: every creature you have caught, your best catches, the places you have found. Click to open it (or press N).' },
   binoculars: { name: 'Binoculars', kind: 'util', behavior: 'scan', rarity: 'common', price: 0, level: 0, color: '#3a3a4a', desc: 'Hold to zoom. Look at a creature to scan it into your Dino Dex (and see how strong it is).' },
   machete: { name: 'Machete', kind: 'util', behavior: 'cut', rarity: 'common', price: 650, level: 0, color: '#b8c0c8', desc: 'Cuts through vine curtains. Some ruins are hidden behind them.' },
   shovel: { name: 'Shovel', kind: 'util', behavior: 'dig', rarity: 'common', price: 400, level: 0, color: '#8a7050', desc: 'Dig up the sparkling mounds: fossils, amber - and eggs that hatch at the zoo.' },

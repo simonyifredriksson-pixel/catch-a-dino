@@ -23,6 +23,8 @@ import { svg } from './Inventory.js';
 import { esc, money, clamp, fmtKg, fmtM } from '../core/Util.js';
 
 const $ = id => document.getElementById(id);
+const DANGER_NAMES = ['Safe', 'Easy', 'Wild', 'Dangerous', 'DEADLY'];
+const dots = D => '<i class="on">&#9679;</i>'.repeat(D) + '<i>&#9679;</i>'.repeat(Math.max(0, 4 - D));
 const _v = new THREE.Vector3();
 
 export class UI {
@@ -50,7 +52,7 @@ export class UI {
       <div id="lunge"><div class="la la-l">${svg('up')}</div><div class="lk"></div><div class="la la-r">${svg('up')}</div></div>
       <div id="toasts"></div>
       <div id="banner"><div class="bt"></div><div class="bs"></div></div>
-      <div id="region"><div class="rt"></div><div class="rs"></div></div>
+      <div id="region"><div class="rt"></div><div class="rs"></div><div class="rd"></div><div class="rb"></div></div>
       <div id="catchcard"></div>
       <div id="floaters"></div>
       <div id="frost"></div><div id="hurt"></div>
@@ -70,7 +72,12 @@ export class UI {
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 500); }, kind === 'legend' ? 6500 : 4200);
   }
   banner(t, s = '', kind = 'info', dur = 3.2) { const B = $('banner'); B.className = 'on ' + kind; B.querySelector('.bt').textContent = t; B.querySelector('.bs').textContent = s; this.bannerT = dur; }
-  region(name, tag) { const R = $('region'); R.querySelector('.rt').textContent = name; R.querySelector('.rs').textContent = tag || ''; R.classList.remove('on'); void R.offsetWidth; R.classList.add('on'); this.regionT = 5; }
+  region(name, tag, b) {
+    const R = $('region'); R.querySelector('.rt').textContent = name; R.querySelector('.rs').textContent = tag || '';
+    const D = b ? BIOMES[b]?.danger ?? 0 : -1, beasts = b ? this.beastsOf(b) : [];
+    R.querySelector('.rd').innerHTML = D >= 0 ? `<span class="dz d${D}">${DANGER_NAMES[D]} ${dots(D)}</span>` : '';
+    R.querySelector('.rb').textContent = beasts.length && D >= 2 ? 'Lives here: ' + beasts.join(', ') : '';
+    R.className = D >= 3 ? 'scary' : ''; R.classList.remove('on'); void R.offsetWidth; R.classList.add('on'); this.regionT = 5; }
   fade(t, s, dur = 2) { const F = $('fade'); F.querySelector('.ft').textContent = t; F.querySelector('.fs').textContent = s || ''; F.classList.add('on'); clearTimeout(this._fadeT); this._fadeT = setTimeout(() => F.classList.remove('on'), dur * 1000); }
   flash() { const F = $('flash'); F.classList.remove('on'); void F.offsetWidth; F.classList.add('on'); }
   hurt() { const H = $('hurt'); H.classList.remove('on'); void H.offsetWidth; H.classList.add('on'); }
@@ -80,6 +87,13 @@ export class UI {
     const el = document.createElement('div'); el.className = 'floater ' + kind; el.textContent = text;
     $('floaters').appendChild(el);
     this.floaters.push({ el, pos: pos ? pos.clone().add(new THREE.Vector3(0, 2.2, 0)) : null, t: 0 });
+  }
+  /** the biggest, scariest things that live in a biome (names only once you have seen them) */
+  beastsOf(b) {
+    const W = this.g.W, rank = { S: 0, M: 1, L: 2, XL: 3 };
+    return Object.values(SP).filter(s => s.where?.includes(b) && !s.when?.event && (s.temper === 'aggressive' || s.temper === 'territorial' || rank[s.size] >= 2))
+      .sort((a, c) => (c.temper === 'aggressive') - (a.temper === 'aggressive') || rank[c.size] - rank[a.size] || RARITY[c.rarity].stars - RARITY[a.rarity].stars)
+      .slice(0, 3).map(s => (W.dex[s.id]?.seen || W.dex[s.id]?.caught) ? s.name : '???');
   }
   /** the zoo paid out: a little "+$" by the money counter */
   payout(m) { if (m >= 1) this.floater('+' + money(m) + ' zoo', null, 'money'); }
@@ -235,7 +249,7 @@ export class UI {
     const tod = W.tod, hh = Math.floor(tod * 24), mm = Math.floor((tod * 24 - hh) * 60);
     const wk = W.weather.kind, wi = { clear: G.sky.state.night > 0.5 ? 'Clear night' : 'Sunny', cloudy: 'Cloudy', rain: 'Rain', storm: 'Thunderstorm' }[wk];
     const b = G.terrain.biome(P.pos.x, P.pos.z);
-    $('clock').innerHTML = `<b>Day ${W.day}</b> ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')} &middot; ${wi}<div class="rg">${esc(G.inInterior ? G.inInterior.name : BIOMES[b]?.name || '')}</div>`;
+    $('clock').innerHTML = `<b>Day ${W.day}</b> ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')} &middot; ${wi}<div class="rg">${esc(G.inInterior ? G.inInterior.name : BIOMES[b]?.name || '')}${!G.inInterior && BIOMES[b] ? ` <span class="dz d${BIOMES[b].danger}" title="Danger">${dots(BIOMES[b].danger)}</span>` : ''}</div>`;
     const O = G.quests.objective();
     const nowEl = $('obj').querySelector('.onow'), nowH = O.now ? '<b>DO THIS NOW</b>' + esc(O.now).replace(/\[([^\]]+)\]/g, '<b class="key">$1</b>') : '';
     if (nowH !== this._now) { this._now = nowH; nowEl.innerHTML = nowH; nowEl.style.display = nowH ? '' : 'none'; }

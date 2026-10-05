@@ -43,6 +43,9 @@ export class Tools {
     if (TOOLS[id]?.behavior !== 'light') this.lantern = false;
   }
 
+  /** the field journal: click to read it */
+  journal(dt, input, click) { if (click) this.g.panels.open('journal'); }
+
   /** the creature nearest the crosshair */
   _findAssist(range) {
     const G = this.g, cam = G.camera, f = cam.getWorldDirection(_f);

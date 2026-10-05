@@ -31,6 +31,7 @@ import { Wild } from './Wild.js';
 import { Zoo, habitatOK } from './Zoo.js';
 import { Fishing } from './Fishing.js';
 import { WaterSigns } from './WaterSigns.js';
+import { Fossils } from '../world/Fossils.js';
 import { Events } from './Events.js';
 import { Quests } from './Quests.js';
 import { Build, exhibitPrice } from './Build.js';
@@ -90,6 +91,7 @@ export class Game {
     this.fx = new Effects(this);
     this.landmarks = new Landmarks(this);
     this.landmarks.build();
+    this.fossils = new Fossils(this); this.fossils.build();
     for (const it of this.landmarks.items) this.addInteract(it);
     this.world = {
       lavaFlows: this._lavaFlows(),
@@ -180,7 +182,7 @@ export class Game {
     this.cam.yaw = 0; this.cam.pitch = 0.2;
     if (fresh) {
       const d = Object.values(this.W.creatures).find(r => r.sp === 'dryo');
-      this.profile.hotbar = ['tool:rope', 'tool:reedrod', d ? 'cr:' + d.uid : null, 'tool:binoculars', 'item:berries', 'item:fish', 'item:meat', null, null, null];
+      this.profile.hotbar = ['tool:rope', 'tool:reedrod', d ? 'cr:' + d.uid : null, 'tool:binoculars', 'item:berries', 'item:fish', 'item:meat', 'tool:journal', null, null];
       this.profile.hotSeen = this.profile.hotbar.filter(Boolean);
       saveProfile(this.profile);
     }
@@ -399,6 +401,10 @@ export class Game {
     }
     W.creatures[rec.uid] = rec;
     W.stats.caught = (W.stats.caught || 0) + 1;
+    // the field journal
+    (W.journal ||= []).unshift({ sp: a.sp, v: a.v || null, kg: Math.round(rec.kg), size: a.size, b: a.x != null ? this.terrain.biome(a.x, a.z) : null, day: W.day, tod: W.tod, fish: !!a.fishing, by: pid === this.me ? null : (this.remotes.get(pid)?.name || 'A friend'), uid: rec.uid });
+    if (W.journal.length > 300) W.journal.length = 300;
+    if (a.fishing) W.stats.fished = (W.stats.fished || 0) + 1;
     const reward = isNew ? Math.round(80 * RARITY[sp.rarity].value) : 0;
     if (reward) this.earn(reward, null, true, 'Grant');
     this._to(pid, { k: 'card', rec, isNew, reward, where });
@@ -663,7 +669,8 @@ export class Game {
     if (b !== this._biome && b !== 'ocean' && !(b === 'beach' && this._biome === 'ocean')) {
       const B = BIOMES[b];
       if (B && (!this._biome || this.time - (this._biomeT || 0) > 6)) {
-        if (!W.flags['b:' + b]) { W.flags['b:' + b] = 1; if (!Pl) { this.ui.region(B.name, B.tag); this.audio.discover(); } }
+        if (!W.flags['b:' + b]) { W.flags['b:' + b] = 1; if (!Pl) { this.ui.region(B.name, B.tag, b); this.audio.discover(); } }
+        else if ((B.danger || 0) >= 3 && !Pl && this.time - (this._dangerT || -999) > 90) { this._dangerT = this.time; this.ui.region(B.name, 'You are entering dangerous land.', b); this.audio.alarm?.(); }
         this._biomeT = this.time;
       }
       this._biome = b;

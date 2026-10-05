@@ -17,7 +17,8 @@ import { Creature } from './Creature.js';
 import { SP, RARITY, SIZE, VARIANTS } from '../data/Species.js';
 import { HABITATS, EX_SIZES, DECOR, ZOO_LEVELS, ZOO_LEVEL_NAMES, PLOTS } from '../data/Build.js';
 import { ZOO } from '../data/Biomes.js';
-import { exhibitArt, decorArt, zooGate, rangerStation } from '../art/ZooArt.js';
+import { exhibitArt, decorArt, rangerStation } from '../art/ZooArt.js';
+import { skullGate, buildDressing } from '../art/ZooDressing.js';
 import { clamp, damp, wrapAngle, lerp } from '../core/Util.js';
 import { Bus } from '../core/Bus.js';
 
@@ -56,7 +57,7 @@ export class Zoo {
   build() {
     const G = this.g, S = G.scene, y = this.y;
     this.root = new THREE.Group(); S.add(this.root);
-    const gate = zooGate(); this.gateG = gate; this.root.add(gate);
+    const gate = skullGate(); this.gateG = gate; this.root.add(gate);
     const st = rangerStation(); st.position.set(STATION.x, y, STATION.z); st.rotation.y = 0; this.root.add(st);
     G.colliders.box(STATION.x, STATION.z, 4.2, 3.2, 0, y - 1, y + 6, 'station');
     G.colliders.box(STATION.x, STATION.z + 4.6, 4.5, 1.5, 0, y - 1, y + 0.8, 'deck', true);
@@ -96,7 +97,13 @@ export class Zoo {
     this.perimeter.add(M.mesh());
     this.gateG.position.set(ZOO.x, y, z1);
     for (const c of this._gateCols || []) G.colliders.remove(c);
-    this._gateCols = [G.colliders.box(ZOO.x - 7, z1, 1.2, 1.2, 0, y - 1, y + 9), G.colliders.box(ZOO.x + 7, z1, 1.2, 1.2, 0, y - 1, y + 9), G.colliders.box(ZOO.x - 11, z1 + 1, 1.6, 1.3, 0, y - 1, y + 3), G.colliders.box(ZOO.x + 11, z1 + 1, 1.6, 1.3, 0, y - 1, y + 3)];
+    this._gateCols = [G.colliders.box(ZOO.x - 7, z1, 1.2, 1.2, 0, y - 1, y + 9), G.colliders.box(ZOO.x + 7, z1, 1.2, 1.2, 0, y - 1, y + 9), G.colliders.box(ZOO.x - 12, z1 + 1.4, 1.7, 1.6, 0, y - 1, y + 3), G.colliders.box(ZOO.x + 12, z1 + 1.4, 1.7, 1.6, 0, y - 1, y + 3)];
+    // the theme-park dressing round the plot (rebuilt only when the plot changes size)
+    if (this._dressHalf !== h) {
+      this._dressHalf = h;
+      if (this.dressing) { this.root.remove(this.dressing.root); for (const c of this.dressing.cols) G.colliders.remove(c); }
+      this.dressing = buildDressing(G, h); this.root.add(this.dressing.root);
+    }
   }
   _addEx(e) {
     const G = this.g, S = EX_SIZES[e.size], h = S.w / 2, y = this.y;

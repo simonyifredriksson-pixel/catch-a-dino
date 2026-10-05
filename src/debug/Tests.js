@@ -79,7 +79,9 @@ export async function shot(G, name, P) {
       break;
     }
     case 'build': { at(ZOO.x, ZOO.z + 30, 0); sim(G, 0.5); G.build.toggle(); if (P.has('cat')) { G.build.cat = P.get('cat'); G.build.render(); } G.build.mouse.set(0, -0.1); sim(G, 1); break; }
-    case 'dex': case 'map': case 'station': case 'pause': {
+    case 'region': { sim(G, 0.3); G.ui.region('Mount Cinder', 'The mountain is awake', 'volcano'); sim(G, 0.6); break; }
+    case 'dex': case 'map': case 'station': case 'pause': case 'journal': {
+      if (name === 'journal') for (const [sp, b, d] of [['trex', 'valley', 6], ['proto', 'meadow', 2], ['coel', 'lake', 1], ['plesio', 'lake', 3], ['ptera', 'peaks', 4]]) { G.W.journal.unshift({ sp, v: null, kg: SP[sp].kg[1], size: 0.7, b, day: d, tod: 0.4 + d * 0.05, fish: SP[sp].move === 'swim' }); G.W.dex[sp] = { seen: 1, caught: 1 }; }
       if (P.has('give')) for (const s of P.get('give').split(',')) { give(G, s); G.W.dex[s] = { seen: 1, caught: 1 }; }
       if (name === 'map') for (let i = 0; i < G.explored.bits.length; i++) G.explored.bits[i] = Math.random() < 0.5 ? 1 : 0;
       sim(G, 0.3); G.panels.open(name, P.get('arg') || undefined); if (P.has('tab')) { G.panels.tab = P.get('tab'); G.panels.render(); } sim(G, 0.2); break;
@@ -147,6 +149,7 @@ const SUITES = {
     t.ok('holding the rope', G.tools.id === 'rope');
     t.ok('zoo has a pen and a tank', G.zoo.ex.size === 2 && G.zoo.creatures.length === 2);
     t.ok('rod on the hotbar', G.profile.hotbar[1] === 'tool:reedrod');
+    t.ok('a field journal in your things', G.W.tools.journal === 1 && G.profile.hotbar.includes('tool:journal'));
     t.ok('tutorial starts at the dock', G.quests.current?.id === 'dock' && !!G.quests.waypoint());
     t.ok('no visitors anywhere', !G.visitors);
   },
@@ -182,6 +185,7 @@ const SUITES = {
     t.ok('caught it', Object.keys(G.W.creatures).length === before + 1 && G.catching.state === 'idle');
     t.ok('it is in the crate', G.packCreatures().some(r => r.sp === 'proto'));
     t.ok('dex updated', G.W.dex.proto?.caught === 1);
+    t.ok('the field journal wrote it down (' + JSON.stringify(G.W.journal?.[0]) + ')', G.W.journal?.[0]?.sp === 'proto' && G.W.journal[0].kg > 0);
     G.admin = null;
     // too strong: the meter bleeds
     const big = wildAt(G, 'trex', P.pos.x, P.pos.z + 20, { st: 'eat' });
@@ -225,6 +229,7 @@ const SUITES = {
     t.ok('dig spots', L.digs.length > 40);
     t.ok('cracks', L.cracks.length > 10);
     t.ok('gates', Object.keys(L.gates).length === 4);
+    t.ok('giant fossils (' + G.fossils.list.length + ') and danger signs (' + G.fossils.signs.length + ')', G.fossils.list.length > 30 && G.fossils.signs.length > 10);
     t.ok('home island is land, the lagoon is water', G.terrain.ground(ZOO.x, ZOO.z) > 3 && G.terrain.ground(0, 380) < -3 && G.terrain.ground(380, 0) < -3);
     t.ok('the dock reaches deep water (' + G.terrain.ground(DOCK.x, DOCK.z + DOCK.len).toFixed(1) + ')', G.terrain.ground(DOCK.x, DOCK.z + DOCK.len) < -2.5);
     t.ok('the grotto is in water', G.terrain.ground(GROTTO.x, GROTTO.z) < -2);
@@ -335,6 +340,16 @@ const SUITES = {
     const y0 = G.player.pos.y;
     G.input.fake('Space', true); sim(G, 0.05); G.input.fake('Space', false); sim(G, 0.5);
     t.ok('SPACE climbs from the water onto the dock (y ' + y0.toFixed(1) + ' -> ' + G.player.pos.y.toFixed(1) + ', ' + G.player.mode + ')', y0 < 0 && G.player.pos.y > 1 && G.player.mode === 'foot');
+  },
+  fossils(t, G) {
+    const F = G.fossils, by = {};
+    for (const f of F.list) by[f.kind] = (by[f.kind] || 0) + 1;
+    G.ui.region('Mount Cinder', 'x', 'volcano'); const rc = document.getElementById('region');
+    t.ok('region card: "' + rc.querySelector('.rd').textContent + '" / "' + rc.querySelector('.rb').textContent + '"', /DEADLY/.test(rc.querySelector('.rd').textContent) && /Lives here/.test(rc.querySelector('.rb').textContent));
+    sim(G, 0.3); t.ok('HUD danger meter: ' + document.getElementById('clock').textContent, !!document.querySelector('#clock .dz'));
+    t.ok(F.list.length + ' fossils ' + JSON.stringify(by) + ', ' + F.signs.length + ' danger signs', F.list.length > 30 && F.signs.length > 10);
+    t.ok('warnings: ' + F.signs.filter(q => q.kind === 'warn').slice(0, 6).map(q => Math.round(q.x) + ',' + Math.round(q.z) + ' ' + G.terrain.biome(q.x, q.z)).join(' | '), true);
+    t.ok('some: ' + F.list.slice(0, 40).map(f => f.kind + '@' + Math.round(f.x) + ',' + Math.round(f.z) + ' s' + f.s.toFixed(1) + ' ' + G.terrain.biome(f.x, f.z)).join(' | '), true);
   },
   portals(t, G) {
     t.ok('portals: ' + G.landmarks.portals.map(p => p.id + '@' + p.x.toFixed(0) + ',' + p.z.toFixed(0) + ',y' + (p.y ?? 0).toFixed(1) + ' r' + p.r + (p.gate ? ' gate ' + p.gate + (G.landmarks.gates[p.gate]?.open ? ' open' : ' shut') : '')).join(' | '), true);

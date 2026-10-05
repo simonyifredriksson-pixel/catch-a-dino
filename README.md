@@ -4,6 +4,8 @@ Your zoo sits on Home Island in the middle of the Glass Lagoon. Fish the lagoon,
 
 **Catch creatures -> put them on show -> the zoo earns money by itself (+$/min) -> better gear and mounts -> explore further.**
 
+Giant fossils lie all over the world: bigger and more of them where the dinosaurs are bigger and more dangerous. Skull totems, warning signs, claw-gouged rocks and huge footprints mark dangerous land; the HUD and the region title show each land's danger and what lives there. Your Field Journal (N) keeps your own notes: catches, records, places and totals.
+
 ## Controls
 | | |
 |---|---|
@@ -13,7 +15,7 @@ Your zoo sits on Home Island in the middle of the Glass Lagoon. Fish the lagoon,
 | 1-0, mouse wheel | hotbar: hold a tool, or call out and ride a creature |
 | E | interact, get on / off |
 | F | your mount's ability (smash, roar, dig, spit...) |
-| TAB | inventory · J Dino Dex · M map · B build (at the zoo) · V camera · T chat · ESC pause |
+| TAB | inventory · J Dino Dex · N Field Journal · M map · B build (at the zoo) · V camera · T chat · ESC pause |
 
 **Catching** (the Hooked catch, reworked): throw the loop at a creature. When the ring shrinks around it, click while it is in the green band. Then hold LMB to keep its head inside your loop on the tug meter, and press the opposite key (A/D) when it lunges. Creatures stronger than your rope break it, so upgrade. Hold C to sneak: creatures notice you later and the snare ring is easier.
 

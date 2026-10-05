@@ -176,6 +176,41 @@ export class Panels {
   }
 
   /* ---------------- the Dino Dex ---------------- */
+  /* ---------------- the field journal (your notes, no clues) ---------------- */
+  _journal() {
+    const G = this.g, W = this.W, tab = ['catches', 'records', 'places', 'totals'].includes(this.tab) ? this.tab : 'catches';
+    const J = W.journal || [];
+    const when = e => 'Day ' + e.day + ', ' + String(Math.floor((e.tod || 0) * 24)).padStart(2, '0') + ':' + String(Math.floor(((e.tod || 0) * 24 % 1) * 60)).padStart(2, '0');
+    const kg = v => v >= 1000 ? (v / 1000).toFixed(1) + ' t' : Math.round(v) + ' kg';
+    const nameOf = e => (e.v ? VARIANTS[e.v]?.name + ' ' : '') + SP[e.sp].name;
+    let body = '';
+    if (tab === 'catches') {
+      body += J.length ? '' : '<p class="jdim">Nothing written here yet. Catch something and it goes in the journal.</p>';
+      body += J.slice(0, 80).map(e => { const sp = SP[e.sp], R = RARITY[sp.rarity], rec = W.creatures[e.uid];
+        return `<div class="jrow"><img src="${G.inv.icons.creature(e.sp, e.v)}"><div class="jtx"><b>${esc(nameOf(e))}</b>${rec?.name ? ' <i>"' + esc(rec.name) + '"</i>' : ''} <span style="color:${R.css}">${'&#9733;'.repeat(R.stars)}</span><span>${kg(e.kg)} &middot; ${e.fish ? 'hooked on a rod' : 'roped'}${e.b ? ' in ' + esc(BIOMES[e.b]?.name || e.b) : ''}${e.by ? ' &middot; by ' + esc(e.by) : ''}</span></div><div class="jwhen">${when(e)}</div></div>`; }).join('');
+    }
+    if (tab === 'records') {
+      const best = {};
+      for (const e of J) { const b = best[e.sp] ||= { n: 0, kg: 0, first: e, top: e }; b.n++; if (e.kg > b.kg) { b.kg = e.kg; b.top = e; } b.first = e; }
+      for (const s of SPECIES) if (W.dex[s.id]?.caught && !best[s.id]) best[s.id] = { n: W.dex[s.id].caught, kg: W.dex[s.id].best || 0, first: null, top: null };
+      const rows = Object.entries(best).sort((a, b) => RARITY[SP[b[0]].rarity].stars - RARITY[SP[a[0]].rarity].stars || b[1].kg - a[1].kg);
+      body += rows.length ? rows.map(([id, b]) => `<div class="jrow"><img src="${G.inv.icons.creature(id, b.top?.v)}"><div class="jtx"><b>${esc(SP[id].name)}</b><span>Heaviest ${kg(b.kg)}${b.top?.b ? ' (' + esc(BIOMES[b.top.b]?.name || '') + ')' : ''} &middot; caught ${b.n}x${b.first ? ' &middot; first on day ' + b.first.day : ''}</span></div></div>`).join('') : '<p class="jdim">No records yet.</p>';
+    }
+    if (tab === 'places') {
+      const seen = PLACES.filter(p => W.flags['seen:' + p.id]);
+      body += `<h3>Places found <i>${seen.length} / ${PLACES.length}</i></h3>`;
+      body += seen.length ? seen.map(p => `<div class="jrow"><div class="sic">${svg('star')}</div><div class="jtx"><b>${esc(p.name)}</b><span>${esc(p.tag || '')}</span></div></div>`).join('') : '<p class="jdim">You have not found any named places yet.</p>';
+      const regions = Object.keys(BIOMES).filter(b => W.flags['b:' + b]);
+      body += `<h3>Lands visited</h3>` + regions.map(b => `<div class="jrow"><div class="jtx"><b>${esc(BIOMES[b].name)}</b><span>Danger: ${['Safe', 'Easy', 'Wild', 'Dangerous', 'DEADLY'][BIOMES[b].danger] || '?'}</span></div></div>`).join('');
+    }
+    if (tab === 'totals') {
+      const heavy = J.reduce((m, e) => (e.kg > (m?.kg || 0) ? e : m), null), rare = J.reduce((m, e) => (!m || RARITY[SP[e.sp].rarity].stars > RARITY[SP[m.sp].rarity].stars ? e : m), null);
+      const t = [['Creatures caught', W.stats.caught || 0], ['Caught on a rod', W.stats.fished || 0], ['Different species', SPECIES.filter(s => W.dex[s.id]?.caught).length + ' / ' + SPECIES.length], ['Heaviest catch', heavy ? nameOf(heavy) + ', ' + kg(heavy.kg) : '-'], ['Rarest catch', rare ? nameOf(rare) + ' (' + RARITY[SP[rare.sp].rarity].name + ')' : '-'], ['Money earned', money(W.stats.earned || 0)], ['Places found', PLACES.filter(p => W.flags['seen:' + p.id]).length], ['Days in the wild', W.day]];
+      body += t.map(([k, v]) => `<div class="jtot"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('');
+    }
+    const tabs = [['catches', 'Catches'], ['records', 'Records'], ['places', 'Places'], ['totals', 'Totals']];
+    return `<div class="phead journal"><h2>Field Journal</h2></div><div class="ptabs">${tabs.map(([k, n]) => `<button data-a="tab" data-v="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div><div class="pbody jbody">${body}</div>`;
+  }
   _dex() {
     const G = this.g, W = this.W, sel = this.arg && SP[this.arg] ? this.arg : SPECIES[0].id;
     const caught = SPECIES.filter(s => W.dex[s.id]?.caught).length;
@@ -232,7 +267,7 @@ export class Panels {
       <label class="set">Invert mouse Y <button data-a="set" data-k="invert">${p.invert ? 'On' : 'Off'}</button></label>
       <label class="set">Shadows <button data-a="set" data-k="shadows">${p.shadows ? 'On' : 'Off'}</button></label>
       <h3>Controls</h3>
-      <div class="ctl"><span><b class="key">WASD</b> move</span><span><b class="key">SHIFT</b> sprint</span><span><b class="key">C</b> sneak</span><span><b class="key">SPACE</b> jump / climb</span><span><b class="key">E</b> interact / get on / off</span><span><b class="key">F</b> mount ability</span><span><b class="key">LMB</b> throw / use</span><span><b class="key">RMB</b> aim / zoom</span><span><b class="key">1-0</b> hotbar</span><span><b class="key">TAB</b> inventory</span><span><b class="key">J</b> Dino Dex</span><span><b class="key">M</b> map</span><span><b class="key">B</b> build (at the zoo)</span><span><b class="key">V</b> camera distance</span><span><b class="key">T</b> chat (co-op)</span></div>
+      <div class="ctl"><span><b class="key">WASD</b> move</span><span><b class="key">SHIFT</b> sprint</span><span><b class="key">C</b> sneak</span><span><b class="key">SPACE</b> jump / climb</span><span><b class="key">E</b> interact / get on / off</span><span><b class="key">F</b> mount ability</span><span><b class="key">LMB</b> throw / use</span><span><b class="key">RMB</b> aim / zoom</span><span><b class="key">1-0</b> hotbar</span><span><b class="key">TAB</b> inventory</span><span><b class="key">J</b> Dino Dex</span><span><b class="key">M</b> map</span><span><b class="key">N</b> journal</span><span><b class="key">B</b> build (at the zoo)</span><span><b class="key">V</b> camera distance</span><span><b class="key">T</b> chat (co-op)</span></div>
       <button class="wide alt" data-a="quit">Save and quit to the title screen</button></div>`;
   }
   _confirm() { const a = this.arg; return `<div class="phead"><h2>${esc(a.title)}</h2></div><div class="pbody"><p>${esc(a.text)}</p><div class="yn"><button data-a="yes">Yes</button><button data-a="no" class="alt">No</button></div></div>`; }
@@ -249,11 +284,13 @@ export class Panels {
       if (this.k === 'map') { this._mt = (this._mt || 0) - dt; if (this._mt <= 0) { this._mt = 0.5; this._drawMap(); } }
       if (I.pressedRaw('KeyJ') && this.k === 'dex') this.close();
       if (I.pressedRaw('KeyM') && this.k === 'map') this.close();
+      if (I.pressedRaw('KeyN') && this.k === 'journal') this.close();
       return;
     }
     if (G.phase !== 'play' || G.inv.open || G.build?.active || G.chatOpen) return;
     if (I.pressedRaw('KeyJ')) this.open('dex');
     if (I.pressedRaw('KeyM')) this.open('map');
+    if (I.pressedRaw('KeyN') && G.W?.tools?.journal) this.open('journal');
   }
 }
 void THREE;
