@@ -196,8 +196,20 @@ export class Game {
     const gp = this.zoo.gatePos();
     this.teleport(gp.x + 2, gp.z - 8, null);
   }
+  /** debugging: if you ever jump far in one step, say which system did it */
+  _jumpCheck() {
+    const P = this.player.pos, last = P.clone();
+    return (step) => {
+      const d = Math.hypot(P.x - last.x, P.z - last.z);
+      if (d > 12 && !this._tpNow) { const m = 'Moved ' + Math.round(d) + ' m by: ' + step + ' (from ' + Math.round(last.x) + ',' + Math.round(last.z) + ')'; window.__log?.('JUMP ' + m); this.ui.toast(m, 'bad'); }
+      last.copy(P); this._tpNow = false;
+    };
+  }
   teleport(x, z, interior, yaw) {
     const P = this.player;
+    const why = (new Error().stack || '').split('\n').slice(2, 4).map(l => l.trim().replace(/^at /, '').replace(/\(.*\//, '(').replace(/\?v=\w+/, '')).join(' < ');
+    if (this.phase === 'play' && Math.hypot(P.pos.x - x, P.pos.z - z) > 12) { window.__log?.('TELEPORT ' + why); this.ui.toast('Teleported by: ' + why, 'bad'); }
+    this._tpNow = true;
     if (this.riding.c) this.riding.recall(true);
     if (P.ride) this.riding.leaveSeat();
     this.catching.cancel(true);
@@ -552,21 +564,23 @@ export class Game {
     this.interactable = blocked ? null : this._findInteract();
     if (this.interactable && I.pressed('KeyE') && !this.catching.fighting) { I.down.delete('KeyE'); this.interactable.act(); }
     // you
+    const J = this._jumpCheck('start');
     if (!this.build.active) this.player.update(dt, I, this.cam);
-    this.riding.update(dt, I, blocked);
+    J('player');
+    this.riding.update(dt, I, blocked); J('riding');
     this.riding.tickRemote(dt);
-    this.tools.update(dt, I, blocked);
-    this.abilities.update(dt);
+    this.tools.update(dt, I, blocked); J('tools');
+    this.abilities.update(dt); J('abilities');
     // the world
-    this.wild.update(dt);
-    this.zoo.update(dt);
-    this.events.update(dt);
-    this.quests.update(dt);
+    this.wild.update(dt); J('wild');
+    this.zoo.update(dt); J('zoo');
+    this.events.update(dt); J('events');
+    this.quests.update(dt); J('quests');
     this._hatchery();
-    this._remotes(dt);
+    this._remotes(dt); J('remotes');
     for (let i = this.baitMeshes.length - 1; i >= 0; i--) { const b = this.baitMeshes[i]; b.t -= dt; if (b.t <= 0) { this.scene.remove(b.m); this.baitMeshes.splice(i, 1); } }
-    this._discovery(dt);
-    this._portals(dt);
+    this._discovery(dt); J('discovery');
+    this._portals(dt); J('portals');
     // effects, sky, water, streaming
     const P = this.player.pos, cp = this.camera.position;
     this.signs.update(dt);
