@@ -18,6 +18,7 @@ import { PLACES, BEACONS } from '../data/Places.js';
 import { DOCK, HOME } from '../data/Biomes.js';
 import { STATION } from './Zoo.js';
 import { creatureRecord } from './State.js';
+import { TOOLS } from '../data/Tools.js';
 
 const recs = g => Object.values(g.W.creatures);
 const isSwim = r => SP[r.sp]?.move === 'swim';
@@ -35,32 +36,36 @@ function dockWay(g) {
 export const QUESTS = [
   { id: 'dock', tut: true, title: 'Down to the water', text: 'Walk to the end of the dock, south of the zoo.', hint: 'Follow the arrow. WASD to walk, SHIFT to sprint. Fell in? Swim to the pier and press SPACE to climb up.',
     say: 'Welcome to Home Island, ranger! I am Professor Bramble. Your zoo is small, but the world out there is full of creatures. Let us start at the water - meet me on the dock.',
-    at: dockWay, check: g => near(g, dockEnd, 9), pay: 50 },
+    at: dockWay, now: g => { const w = dockWay(g); return 'Hold ' + K('W') + ' to walk. Turn with the mouse so you face the yellow arrow. ' + (w === dockEnd ? 'Walk to the end of the dock' : 'The dock') + ' is ' + far(g, w) + ' m away.'; },
+    check: g => near(g, dockEnd, 9), pay: 50 },
   { id: 'fish', tut: true, title: 'Something in the lagoon', text: 'Pick the Reed Rod (2). Hold LMB to charge, release to cast. Wait for a bite, then CLICK right away.', hint: 'Then HOLD LMB to reel and keep the fish in the green zone. Watch for shadows and bubbles - fish are where the signs are.',
     say: 'The Glass Lagoon is full of life. Cast your rod, wait for the float to bob - and when it dips, click! Small fish come easy. Big ones... you will know.',
-    at: dockWay, check: g => recs(g).some(r => isSwim(r) && wild(r)), pay: 150 },
-  { id: 'unload', tut: true, title: 'Bring it home', text: 'Walk to the Ranger Station and unload your crate (E, then Animals).', hint: 'Everything you catch rides in your crate until you unload it.',
+    at: dockWay, now: g => near(g, dockEnd, 14) || g.catching.state === 'fight' ? rodNow(g) : 'Go back out to the end of the dock (' + far(g, dockEnd) + ' m) and fish there.',
+    check: g => recs(g).some(r => isSwim(r) && wild(r)), pay: 150 },
+  { id: 'unload', tut: true, title: 'Bring it home', text: 'Take your fish to the Ranger Station and put it in the Lagoon Tank.', hint: 'At the station: press E, click ANIMALS, then click Lagoon Tank next to your fish.', now: g => stationNow(g, 'fish'),
     say: 'A fine catch! Take it to the Ranger Station - that is where your animals, the shop and the upgrades are.',
     at: () => ({ x: STATION.x, z: STATION.z + 5, label: 'Station' }), check: g => recs(g).some(r => isSwim(r) && wild(r) && !r.at.startsWith('pack:')), pay: 100 },
-  { id: 'tank', tut: true, title: 'Into the tank', text: 'Go to the Lagoon Tank gate and press E to move your catch in.', hint: 'Swimmers need an Aquatic Tank. Land animals need a pen.',
+  { id: 'tank', tut: true, title: 'Into the tank', text: 'Put your fish in the Lagoon Tank.', hint: 'At the Ranger Station (E), ANIMALS tab: click Lagoon Tank next to your fish.', now: g => stationNow(g, 'fish'),
     say: 'Now put it on show. The Lagoon Tank is right there on the east side.',
-    at: g => { const e = exAt(g, 'ex2'); return e && { x: e.x, z: e.z + 14, label: 'Tank' }; }, check: g => recs(g).some(r => isSwim(r) && wild(r) && r.at.startsWith('ex:')), pay: 200 },
-  { id: 'income', tut: true, title: 'Your zoo earns money', text: 'Look at the top right: your zoo pays you every few seconds. Rarer, happier animals pay more.', hint: 'Wait for the next payout.',
+    at: () => ({ x: STATION.x, z: STATION.z + 5, label: 'Station' }), check: g => recs(g).some(r => isSwim(r) && wild(r) && r.at.startsWith('ex:')), pay: 200 },
+  { id: 'income', tut: true, title: 'Your zoo earns money', text: 'Look at the top right: your zoo pays you every few seconds. Rarer, happier animals pay more.', hint: 'Wait for the next payout.', now: () => 'Just wait a few seconds and watch your money (top right) go up. The zoo earns by itself!',
     say: 'See that? Every animal on show earns your zoo money, all by itself. The rarer and happier, the more. Now - I have a gift for you.',
     check: g => g.W.stats.zooPaid >= 2, pay: 0 },
   { id: 'shelly', tut: true, title: 'Shelly the Archelon', text: 'Shelly is in your crate. Stand at the end of the dock and summon her from the hotbar, then press E to climb on.', hint: 'Sea creatures can only be summoned in water deep enough to swim.',
     say: 'This is Shelly, my old Archelon. She is slow, but she swims anywhere. Call her at the end of the dock and climb aboard!',
-    at: dockWay, check: g => g.player.mount?.spId === 'archelon' || [...g.remotes.values()].some(R => R.st?.m?.sp === 'archelon'), pay: 100 },
+    at: dockWay, now: g => { const sh = recs(g).find(r => r.gift && r.sp === 'archelon'), k = sh && slotOf(g, 'cr:' + sh.uid); const c = g.riding.c; if (c?.spId === 'archelon') return 'Walk up to Shelly in the water and press ' + K('E') + ' to climb on her back.'; if (!near(g, dockEnd, 12)) return 'Walk to the end of the dock (' + far(g, dockEnd) + ' m). Shelly needs deep water.'; return 'Press ' + K(k || 'her hotbar number') + ' to call Shelly. Then press ' + K('E') + ' near her to climb on.'; },
+    check: g => g.player.mount?.spId === 'archelon' || [...g.remotes.values()].some(R => R.st?.m?.sp === 'archelon'), pay: 100 },
   { id: 'cross', tut: true, title: 'Across the lagoon', text: 'Ride Shelly north across the lagoon to the Fernvale Shore.', hint: 'W to swim where you look, SPACE up, CTRL down. Rivers lead inland from every shore.',
     say: 'North is the Fernvale Shore - easy dinosaurs, perfect for a first lasso. Beyond it the jungle, east the mountains, south the swamp, west the open sea. The farther you go, the rarer it gets.',
-    at: () => ({ x: 0, z: -560, label: 'Fernvale' }), check: g => g.players().some(p => p.pos.z < -505 && Math.abs(p.pos.x) < 420 && g.terrain.ground(p.pos.x, p.pos.z) > -0.5), pay: 150 },
+    at: () => ({ x: 0, z: -560, label: 'Fernvale' }), now: g => (g.player.mount ? 'Hold ' + K('W') + ' to swim the way you are looking. Follow the arrow north' : 'Get back on Shelly (' + K('E') + ' near her), then follow the arrow north') + ' - ' + far(g, { x: 0, z: -560 }) + ' m to the far shore.', check: g => g.players().some(p => p.pos.z < -505 && Math.abs(p.pos.x) < 420 && g.terrain.ground(p.pos.x, p.pos.z) > -0.5), pay: 150 },
   { id: 'lasso', tut: true, title: 'Rope a dinosaur', text: 'Hold the Rope Lasso (1). Hold LMB to spin, release to throw. CLICK when the ring is in the green band, then HOLD to pull.', hint: 'Hold C to sneak: they notice you later, and the snare ring is easier. Press the opposite key (A/D) when it lunges.',
     say: 'Here is a trick: hold C and creep up on them. A dino that does not see you coming is much easier to snare.',
+    now: g => g.player.mount ? 'Swim to the beach, then press ' + K('E') + ' to get off Shelly. Then catch a dinosaur.' : lassoNow(g),
     check: g => recs(g).some(r => SP[r.sp]?.move === 'walk' && wild(r)), pay: 250 },
-  { id: 'pen', tut: true, title: 'The Meadow Pen', text: 'Bring it home: unload at the Ranger Station, then put it in the Meadow Pen.', hint: 'Shelly will carry you back. Or the Dryosaurus (3) runs fast on land.',
+  { id: 'pen', tut: true, title: 'The Meadow Pen', text: 'Bring it home and put it in the Meadow Pen.', hint: 'Ride Shelly back across the water. At the Ranger Station (E), ANIMALS tab: click Meadow Pen next to your dino.', now: g => { const big = recs(g).find(r => SP[r.sp]?.move === 'walk' && wild(r) && r.at === 'zoo' && !['S', 'M'].includes(SP[r.sp].size)); if (big) return 'That one is too big for the Meadow Pen! Leave it in the holding pen and catch a small dino (Compy, Protoceratops or Dryosaurus).'; return Math.hypot(g.player.pos.x, g.player.pos.z) > 260 ? 'Ride Shelly back home across the water (follow the arrow, ' + far(g, { x: STATION.x, z: STATION.z }) + ' m).' : stationNow(g, 'dino'); },
     say: 'Splendid! Ride home and give it a place in the Meadow Pen.',
-    at: g => { const e = exAt(g, 'ex1'); return e && { x: e.x, z: e.z + 14, label: 'Pen' }; }, check: g => recs(g).some(r => SP[r.sp]?.move === 'walk' && wild(r) && r.at.startsWith('ex:')), pay: 300 },
-  { id: 'buy', tut: true, title: 'Gear up', text: 'Buy something at the Ranger Station: bait, a better rod, or a new tool.', hint: 'Fish bait brings bigger bites. A Bone Rod can hold things that would snap a reed.',
+    at: () => ({ x: STATION.x, z: STATION.z + 5, label: 'Station' }), check: g => recs(g).some(r => SP[r.sp]?.move === 'walk' && wild(r) && r.at.startsWith('ex:')), pay: 300 },
+  { id: 'buy', tut: true, title: 'Gear up', text: 'Buy something at the Ranger Station: bait, a better rod, or a new tool.', hint: 'Fish bait brings bigger bites. A Bone Rod can hold things that would snap a reed.', now: g => g.ui.panel === 'station' || g.panels?.k === 'station' ? 'In the SHOP tab, scroll down to Bait and click a price button to buy something.' : atStation(g) ? 'Press ' + K('E') + ' to open the Ranger Station.' : 'Follow the arrow to the Ranger Station - ' + far(g, { x: STATION.x, z: STATION.z + 5 }) + ' m.',
     say: 'Money comes in, gear goes out. Better rods, ropes and bait let you catch bigger, rarer things. That is all I can teach you - the rest is out there. Good luck, ranger!',
     at: () => ({ x: STATION.x, z: STATION.z + 5, label: 'Station' }), check: g => (g.W.stats.bought || 0) >= 1, pay: 300 },
   // ---- after the tutorial
@@ -79,6 +84,38 @@ export const QUESTS = [
   { id: 'myth', title: 'Myth', text: 'Catch a Mythic creature.', hint: 'Some say the Temple Vault tells you how.', check: g => recs(g).some(r => SP[r.sp].rarity === 'mythic'), pay: 50000 },
 ];
 export const TUT_END = QUESTS.findIndex(q => !q.tut);
+
+/* ---- "DO THIS NOW": one plain instruction for this very moment ---- */
+const K = k => '[' + k + ']';
+const far = (g, p) => Math.round(Math.hypot(p.x - g.player.pos.x, p.z - g.player.pos.z));
+const holding = (g, kind) => (TOOLS[g.tools.id]?.kind === kind);
+function slotOf(g, id) { const i = (g.profile.hotbar || []).indexOf(id); return i < 0 ? null : String((i + 1) % 10); }
+function rodNow(g) {
+  const F = g.fishing.state, C = g.catching;
+  if (C.state === 'fight') return 'HOLD the left mouse button to reel in. Keep the fish picture inside the white box on the right. Let go when it goes too high.';
+  if (!holding(g, 'rod')) return 'Press ' + K(slotOf(g, 'tool:reedrod') || '2') + ' to take out your fishing rod.';
+  if (F === 'charge') return 'Now LET GO of the mouse button to cast!';
+  if (F === 'fly' || F === 'wait') return 'Wait and watch the red float... do not click yet.';
+  if (F === 'nibble') return 'Something is nibbling... NOT YET! Wait until it goes under.';
+  if (F === 'bite') return 'CLICK NOW!';
+  if (F === 'reel') return 'Reeling the float back in...';
+  return 'Face the water. HOLD the left mouse button, then LET GO to cast your float.';
+}
+function lassoNow(g) {
+  const C = g.catching;
+  if (C.state === 'fight') return 'HOLD the left mouse button to pull. Keep the dino picture inside the white box on the right. If a red arrow says BRACE, press that key (A or D).';
+  if (C.state === 'snare') return 'CLICK when the white ring is inside the green circle (it says NOW!).';
+  if (C.state === 'charge') return 'Aim at the dino and LET GO to throw!';
+  if (C.state === 'fly') return 'The rope is flying...';
+  if (!holding(g, 'catch')) return 'Press ' + K(slotOf(g, 'tool:rope') || '1') + ' to take out your lasso.';
+  if (g.tools.assist) return 'Get within about 15 steps of it, then HOLD the left mouse button to spin the rope.' + (g.player.crouch ? '' : ' (Hold ' + K('C') + ' to sneak closer.)');
+  return 'Find a small dinosaur on this shore and point the middle of your screen at it. Hold ' + K('C') + ' to sneak.';
+}
+const atStation = g => far(g, { x: STATION.x, z: STATION.z + 5 }) < 7;
+const stationNow = (g, what) => g.ui.panel === 'station' || g.panels?.k === 'station'
+  ? 'Click the ANIMALS tab at the top. Next to your ' + what + ', click the ' + (what === 'fish' ? 'Lagoon Tank' : 'Meadow Pen') + ' button.'
+  : atStation(g) ? 'Press ' + K('E') + ' to open the Ranger Station.'
+  : 'Follow the arrow to the Ranger Station (the wooden cabin) - ' + far(g, { x: STATION.x, z: STATION.z + 5 }) + ' m.';
 
 function near(g, p, r) { return g.players().some(q => Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < r); }
 
@@ -155,7 +192,7 @@ export class Quests {
   /** what to show in the objective box */
   objective() {
     const Q = this.current;
-    if (Q) return { title: (Q.tut ? 'Tutorial ' + (this.W.quest + 1) + '/' + TUT_END + ': ' : '') + Q.title, text: Q.text, hint: Q.hint };
+    if (Q) { let now = null; try { now = Q.now?.(this.g) || null; } catch (e) { now = null; } return { title: (Q.tut ? 'Tutorial ' + (this.W.quest + 1) + '/' + TUT_END + ': ' : '') + Q.title, text: Q.text, hint: Q.hint, now }; }
     // after the chain: point at something you have not caught
     const miss = SPECIES.filter(s => !this.W.dex[s.id]?.caught);
     if (!miss.length) return { title: 'Every creature caught!', text: 'You are the greatest dino keeper who ever lived. Now go and make them all happy.' };

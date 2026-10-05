@@ -38,8 +38,8 @@ export function newWorld(hostKey) {
     plot: 0,
     zoo: {
       exhibits: [
-        { id: 'ex1', hab: 'meadow', size: 'S', x: zx - 24, z: zz - 18, rot: 0, name: 'Meadow Pen' },
-        { id: 'ex2', hab: 'aquatic', size: 'S', x: zx + 24, z: zz - 18, rot: 0, name: 'Lagoon Tank' },
+        { id: 'ex1', hab: 'meadow', size: 'M', x: zx - 24, z: zz - 18, rot: 0, name: 'Meadow Pen' },
+        { id: 'ex2', hab: 'aquatic', size: 'M', x: zx + 24, z: zz - 18, rot: 0, name: 'Lagoon Tank' },
       ],
       decor: [
         { id: 'd2', k: 'bench', x: zx - 8, z: zz + 14, rot: 0 },
@@ -74,5 +74,6 @@ export function migrate(W) {
   W.zoo.paths ||= []; W.creatures ||= {}; W.dex ||= {}; W.flags ||= {}; W.gates ||= {}; W.found ||= {}; W.beacons ||= {}; W.players ||= {}; W.stats ||= {};
   for (const k of ['crate', 'boots', 'helmet', 'coat', 'glider', 'saddle', 'drone', 'beacon']) W.upg[k] ??= 0;
   W.plot ??= 0;
+  for (const e of W.zoo.exhibits) if ((e.id === 'ex1' || e.id === 'ex2') && e.size === 'S') e.size = 'M';   // the starter exhibits fit any tutorial catch
   return W;
 }

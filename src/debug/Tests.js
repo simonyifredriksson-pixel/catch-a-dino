@@ -280,7 +280,9 @@ const SUITES = {
     const c = G.wild.add({ sp: 'plesio', x: P.pos.x, z: P.pos.z + 20, y: -3, size: 0.5 }); c.ai.st = 'held'; G.wild.claim(c);
     G.W.tools.levrod = 1; G.catching.c = c; G.catching.toolId = 'levrod'; G.catching._startFight(true, { fishing: true, dist: 20 });
     t.ok('something BIG is on the line', G.catching.F.big);
+    G.input.mouse.buttons.add(0);
     let maxY = -99, em = 0, endAt = -1; for (let i = 0; i < 360; i++) { sim(G, 1 / 30); if (G.catching.c === c) { maxY = Math.max(maxY, c.pos.y); if (G.catching.F?.emerge > 0) em++; } else if (endAt < 0) endAt = i / 30; }
+    G.input.mouse.buttons.delete(0);
     t.ok('it broke the surface (top y ' + maxY.toFixed(1) + ', emerging ' + (em / 30).toFixed(1) + 's, fight ended ' + endAt.toFixed(1) + 's)', maxY > -0.5);
     G.catching.cancel(true);
   },

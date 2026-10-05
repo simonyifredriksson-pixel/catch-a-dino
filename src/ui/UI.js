@@ -35,7 +35,7 @@ export class UI {
   _build() {
     const H = this.root;
     H.insertAdjacentHTML('beforeend', `
-      <div id="obj"><div class="ot"></div><div class="ox"></div><div class="oh"></div></div>
+      <div id="obj"><div class="ot"></div><div class="ox"></div><div class="onow"></div><div class="oh"></div></div>
       <div id="compass"><div class="cstrip"></div><div class="cmarks"></div><i class="cneedle"></i></div>
       <div id="topright"><div id="money"><span class="mi">${svg('coin')}</span><b>0</b></div><div id="zoochip"></div><div id="clock"></div></div>
       <div id="vitals"><div class="hearts"></div><div class="breath"><i></i></div><div class="cold"><i></i></div></div>
@@ -84,7 +84,7 @@ export class UI {
   /** the zoo paid out: a little "+$" by the money counter */
   payout(m) { if (m >= 1) this.floater('+' + money(m) + ' zoo', null, 'money'); }
   /** someone talks to you (the professor) */
-  say(name, text) { const S = $('say'); S.querySelector('.sn').textContent = name; S.querySelector('.sx').textContent = text; S.classList.add('on'); this.sayT = 5 + text.length * 0.05; }
+  say(name, text) { const S = $('say'); S.querySelector('.sn').textContent = name; S.querySelector('.sx').textContent = text; S.classList.add('on'); this.sayT = 10 + text.length * 0.07; this._said = [name, text]; }
   /** the float went under */
   flashBite(big) { const B = $('bite'); B.textContent = big ? 'SOMETHING BIG!' : 'BITE!'; B.classList.toggle('big', !!big); B.classList.add('on'); this.biteT = 0.9; }
   mark(c, dur = 60) { this.marks = this.marks.filter(m => m.c !== c); this.marks.push({ c, t: dur, kind: 'creature' }); }
@@ -125,6 +125,7 @@ export class UI {
     const G = this.g, P = G.player, W = G.W, cam = G.camera;
     this.bannerT -= dt; if (this.bannerT <= 0) $('banner').classList.remove('on');
     if (this.sayT > 0) { this.sayT -= dt; if (this.sayT <= 0) $('say').classList.remove('on'); }
+    if (this._said && G.input.pressedRaw('KeyH') && !this.panel && !G.chatOpen) this.say(...this._said);   // hear the professor again
     const Fh = G.fishing.hud();
     if (this.biteT > 0) { this.biteT -= dt; if (this.biteT <= 0 || Fh.state !== 'bite') { this.biteT = 0; $('bite').classList.remove('on'); } }
     $('sneak').classList.toggle('on', !!P.crouch && !P.mount);
@@ -236,8 +237,10 @@ export class UI {
     const b = G.terrain.biome(P.pos.x, P.pos.z);
     $('clock').innerHTML = `<b>Day ${W.day}</b> ${String(hh).padStart(2, '0')}:${String(mm - mm % 10).padStart(2, '0')} &middot; ${wi}<div class="rg">${esc(G.inInterior ? G.inInterior.name : BIOMES[b]?.name || '')}</div>`;
     const O = G.quests.objective();
-    const ok = JSON.stringify(O);
-    if (ok !== this._ok) { this._ok = ok; $('obj').querySelector('.ot').textContent = O.title; $('obj').querySelector('.ox').textContent = O.text; $('obj').querySelector('.oh').textContent = O.hint || ''; $('obj').classList.remove('pop'); void $('obj').offsetWidth; $('obj').classList.add('pop'); }
+    const nowEl = $('obj').querySelector('.onow'), nowH = O.now ? '<b>DO THIS NOW</b>' + esc(O.now).replace(/\[([^\]]+)\]/g, '<b class="key">$1</b>') : '';
+    if (nowH !== this._now) { this._now = nowH; nowEl.innerHTML = nowH; nowEl.style.display = nowH ? '' : 'none'; }
+    const ok = JSON.stringify({ ...O, now: 0 });
+    if (ok !== this._ok) { this._ok = ok; $('obj').querySelector('.ot').textContent = O.title; $('obj').querySelector('.ox').textContent = O.text; $('obj').querySelector('.oh').textContent = (O.hint || '') + (G.quests.inTutorial ? '  (H: hear the professor again)' : ''); $('obj').classList.remove('pop'); void $('obj').offsetWidth; $('obj').classList.add('pop'); }
   }
   /** the snare ring: drawn around the creature on screen */
   _ring(C) {

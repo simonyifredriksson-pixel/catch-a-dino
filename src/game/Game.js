@@ -201,14 +201,14 @@ export class Game {
     const P = this.player.pos, last = P.clone();
     return (step) => {
       const d = Math.hypot(P.x - last.x, P.z - last.z);
-      if (d > 12 && !this._tpNow) { const m = 'Moved ' + Math.round(d) + ' m by: ' + step + ' (from ' + Math.round(last.x) + ',' + Math.round(last.z) + ')'; window.__log?.('JUMP ' + m); this.ui.toast(m, 'bad'); }
+      if (d > 12 && !this._tpNow) { const m = 'Moved ' + Math.round(d) + ' m by: ' + step + ' (from ' + Math.round(last.x) + ',' + Math.round(last.z) + ')'; window.__log?.('JUMP ' + m); }
       last.copy(P); this._tpNow = false;
     };
   }
   teleport(x, z, interior, yaw) {
     const P = this.player;
     const why = (new Error().stack || '').split('\n').slice(2, 4).map(l => l.trim().replace(/^at /, '').replace(/\(.*\//, '(').replace(/\?v=\w+/, '')).join(' < ');
-    if (this.phase === 'play' && Math.hypot(P.pos.x - x, P.pos.z - z) > 12) { window.__log?.('TELEPORT ' + why); this.ui.toast('Teleported by: ' + why, 'bad'); }
+    if (this.phase === 'play' && Math.hypot(P.pos.x - x, P.pos.z - z) > 12) window.__log?.('TELEPORT ' + why);
     this._tpNow = true;
     if (this.riding.c) this.riding.recall(true);
     if (P.ride) this.riding.leaveSeat();
