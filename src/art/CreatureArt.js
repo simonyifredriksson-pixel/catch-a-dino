@@ -1097,6 +1097,66 @@ function ammonite(R, D, cols) {
 
 const PLANS = { theropod, quad, sauropod, ptero, marine, fish, dragonfly, millipede, scorpion, ammonite };
 
+/* =====================================================================
+   MAGIC - the features that make a creature ITS creature, on any plan:
+   ears, antlers, a horn, antennae, a leaf mane, a mushroom cap, gems,
+   a shell, a puff or a flame on the tail, whiskers, cheeks, petals,
+   little wings, a crown, a rocky hide.  (body.magic = [...])
+   ===================================================================== */
+function decorate(R, D, cols, meta) {
+  const F = new Set(D.magic || []); if (!F.size) return;
+  const ro = meta.roles, dims = meta.dims || {};
+  const hb = ro.head, Hb = hb && R.B(hb);
+  const hl = dims.headL || (dims.len || 1) * 0.16, top = cols.top;
+  const H0 = hb ? R.P(hb) : V(0, dims.height || 1, (dims.len || 1) * 0.4);
+  const hc = H0.clone().add(V(0, hl * 0.22, hl * 0.3));            // roughly the middle of the head
+  const backs = (ro.spine || []).map(n => [n, R.P(n)]);
+  if (ro.hips) backs.unshift([ro.hips, R.P(ro.hips)]);
+  const bh = dims.bh || (dims.height || 1) * 0.22, bw = dims.bw || bh;
+  const tails = ro.tail || [], tl = tails.length ? tails[tails.length - 1] : null;
+  const tip = tl ? R.P(tl) : null;
+  const glowO = { glow: true };
+  if (F.has('ears') && Hb) for (const k of [-1, 1]) {
+    const b = hc.clone().add(V(k * hl * 0.28, hl * 0.3, -hl * 0.12)), t = b.clone().add(V(k * hl * 0.32, hl * (D.earLen || 1.1), -hl * 0.3));
+    spike(R, Hb, b, t, hl * 0.2, cols.ear || top, { n: 4 });
+    spike(R, Hb, b.clone().add(V(0, hl * 0.05, hl * 0.04)), t.clone().lerp(b, 0.12).add(V(0, 0, hl * 0.04)), hl * 0.11, cols.earIn || '#f4b8c0', { n: 4 });
+  }
+  if (F.has('roundears') && Hb) for (const k of [-1, 1]) {
+    const p = hc.clone().add(V(k * hl * 0.4, hl * 0.4, -hl * 0.15));
+    R.prim(shapes.ico(1), M(p.x, p.y, p.z, 0, 0, 0, hl * 0.5, hl * 0.5, hl * 0.14), cols.ear || top, Hb);
+    R.prim(shapes.ico(1), M(p.x, p.y, p.z + hl * 0.04, 0, 0, 0, hl * 0.32, hl * 0.32, hl * 0.1), cols.earIn || '#f4b8c0', Hb);
+  }
+  if (F.has('antlers') && Hb) for (const k of [-1, 1]) {
+    const b = hc.clone().add(V(k * hl * 0.22, hl * 0.32, -hl * 0.1)), ac = cols.antler || '#e8dcc0', L = hl * (D.antler || 1.4);
+    horn(R, Hb, b, V(k * 0.6, 1, -0.3), L, hl * 0.07, V(k * 0.05, 0, -0.06), ac, 4);
+    for (let i = 1; i <= 2; i++) { const q = b.clone().add(V(k * L * 0.25 * i, L * 0.32 * i, -L * 0.1 * i)); horn(R, Hb, q, V(k * 0.1, 1, 0.4), L * 0.35, hl * 0.05, V(0, 0, 0.05), ac, 3); if (cols.antlerGlow) R.prim(shapes.ico(0), M(q.x + k * L * 0.05, q.y + L * 0.36, q.z + L * 0.14, 0, 0, 0, hl * 0.12, hl * 0.12, hl * 0.12), cols.antlerGlow, Hb, glowO); }
+  }
+  if (F.has('ramhorns') && Hb) for (const k of [-1, 1]) horn(R, Hb, hc.clone().add(V(k * hl * 0.3, hl * 0.25, -hl * 0.15)), V(k * 0.8, 0.5, -0.6), hl * 1.5, hl * 0.16, V(k * -0.1, -0.35, 0.3), cols.horn || '#d8c8a0', 7);
+  if (F.has('unihorn') && Hb) horn(R, Hb, hc.clone().add(V(0, hl * 0.32, hl * 0.18)), V(0, 1, 0.6), hl * (D.hornLen || 1.1), hl * 0.12, V(0, -0.03, 0), cols.horn || '#f6e8a0', 5);
+  if (F.has('antennae') && Hb) for (const k of [-1, 1]) {
+    const b = hc.clone().add(V(k * hl * 0.15, hl * 0.32, 0)), t = b.clone().add(V(k * hl * 0.35, hl * 0.9, hl * 0.35));
+    R.prim(shapes.cyl(4), aim(b, t, hl * 0.03), dark(top, 0.6), Hb);
+    R.prim(shapes.ico(1), M(t.x, t.y, t.z, 0, 0, 0, hl * 0.22, hl * 0.22, hl * 0.22), cols.glow || '#9af0ff', Hb, glowO);
+  }
+  if (F.has('crown') && Hb) for (let i = 0; i < 5; i++) { const a = (i - 2) * 0.35, b = hc.clone().add(V(Math.sin(a) * hl * 0.3, hl * 0.3, -Math.cos(a) * hl * 0.08)); spike(R, Hb, b, b.clone().add(V(Math.sin(a) * hl * 0.15, hl * (0.45 + (i === 2 ? 0.2 : 0)), -hl * 0.05)), hl * 0.07, cols.crown || '#ffd040', { glow: !!cols.crownGlow }); }
+  if (F.has('whiskers') && Hb && meta.mouth) { const m = R.P(meta.mouth.bone).clone().add(meta.mouth.at || V()); for (const k of [-1, 1]) for (const y of [0, 0.06]) R.prim(shapes.cyl(3), aim(m.clone().add(V(k * hl * 0.12, hl * (0.12 + y), -hl * 0.1)), m.clone().add(V(k * hl * 0.75, hl * (0.2 + y * 2), -hl * 0.05)), hl * 0.012), '#f4f0e8', Hb); }
+  if (F.has('cheeks') && Hb) for (const k of [-1, 1]) { const p = hc.clone().add(V(k * hl * 0.36, -hl * 0.05, hl * 0.12)); R.prim(shapes.ico(1), M(p.x, p.y, p.z, 0, 0, 0, hl * 0.06, hl * 0.18, hl * 0.18), cols.cheek || '#ff8a9a', Hb); }
+  if (F.has('tuft') && Hb) for (let i = 0; i < 4; i++) { const b = hc.clone().add(V((i - 1.5) * hl * 0.08, hl * 0.32, -hl * 0.05)); spike(R, Hb, b, b.clone().add(V((i - 1.5) * hl * 0.12, hl * 0.5, -hl * 0.25)), hl * 0.07, cols.tuft || cols.accent || dark(top, 0.8), { n: 4 }); }
+  // along the back
+  const along = (n, f) => { for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, idx = Math.min(backs.length - 1, Math.floor(t * backs.length)); if (!backs.length) return; const [bn, p] = backs[idx]; const nx = backs[Math.min(backs.length - 1, idx + 1)][1]; f(p.clone().lerp(nx, (t * backs.length) % 1).add(V(0, bh * 0.85, 0)), R.B(bn), i, t); } };
+  if (F.has('leafmane')) along(9, (p, b, i) => { for (const k of [-1, 1]) { const tip2 = p.clone().add(V(k * bw * 0.7, bh * 0.55, -bh * 0.3)); R.tri(p, tip2, p.clone().add(V(0, bh * 0.15, bh * 0.4)), i % 2 ? (cols.leaf || '#5ab04a') : dark(cols.leaf || '#5ab04a', 0.8), [[b, 1]], [[b, 1]], [[b, 1]], { double: true }); } });
+  if (F.has('petals') && hb) { const nb = (ro.neck && ro.neck[0]) || hb, p0 = R.P(nb); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, d = V(Math.cos(a), Math.sin(a), 0); R.tri(p0, p0.clone().addScaledVector(d, hl * 0.9).add(V(0, 0, -hl * 0.2)), p0.clone().addScaledVector(d.clone().applyAxisAngle(V(0, 0, 1), 0.5), hl * 0.7), i % 2 ? (cols.petal || '#ff8ab0') : light(cols.petal || '#ff8ab0', 0.3), [[R.B(nb), 1]], [[R.B(nb), 1]], [[R.B(nb), 1]], { double: true }); } }
+  if (F.has('mushcap') && backs.length) { const [bn, p] = backs[Math.floor(backs.length / 2)]; const c = p.clone().add(V(0, bh * 1.1, 0)), r = Math.max(bw, bh) * (D.cap || 1.6); R.prim(shapes.sph(12, 6), M(c.x, c.y, c.z, 0, 0, 0, r * 2, r * 0.9, r * 2), cols.cap || '#d84a3a', R.B(bn)); for (let i = 0; i < 8; i++) { const a = i * 2.4, q = c.clone().add(V(Math.cos(a) * r * 0.6, r * 0.36, Math.sin(a) * r * 0.6)); R.prim(shapes.ico(0), M(q.x, q.y, q.z, 0, 0, 0, r * 0.22, r * 0.08, r * 0.22), cols.capSpot || '#fff4e0', R.B(bn), { glow: !!cols.capGlow }); } }
+  if (F.has('gems')) along(6, (p, b, i) => { const h = bh * (0.8 + (i % 3) * 0.35); spike(R, b, p.clone().add(V(((i % 2) - 0.5) * bw * 0.3, -bh * 0.1, 0)), p.clone().add(V(((i % 2) - 0.5) * bw * 0.6, h, (i % 3 - 1) * bh * 0.2)), bw * 0.16, cols.gem || '#7af0ff', { glow: true, n: 5 }); });
+  if (F.has('rocks')) along(10, (p, b, i) => { R.prim(shapes.dode(), M(p.x + Math.sin(i * 2.1) * bw * 0.35, p.y - bh * 0.1, p.z, i, i * 1.3, 0, bw * 0.55, bh * 0.4, bw * 0.5), i % 3 ? (cols.rock || '#8a8478') : dark(cols.rock || '#8a8478', 0.8), b); });
+  if (F.has('shell') && backs.length) { const [bn, p] = backs[Math.floor(backs.length / 2)]; R.prim(shapes.sph(12, 7), M(p.x, p.y + bh * 0.45, p.z, 0, 0, 0, bw * 2.6, bh * 1.5, (dims.len || 1) * 0.42), cols.shell || '#8a6a3a', R.B(bn)); for (let i = 0; i < 6; i++) { const a = i * 1.05; R.prim(shapes.ico(0), M(p.x + Math.cos(a) * bw * 0.6, p.y + bh * 1.05, p.z + Math.sin(a) * (dims.len || 1) * 0.1, 0, 0, 0, bw * 0.5, bh * 0.15, bw * 0.5), cols.shellPat || dark(cols.shell || '#8a6a3a', 0.75), R.B(bn), { glow: !!cols.shellGlow }); } }
+  if (F.has('wings') && backs.length) { const [bn, p] = backs[backs.length - 1]; for (const k of [-1, 1]) { const b = p.clone().add(V(k * bw * 0.6, bh * 0.6, 0)); for (let i = 0; i < 4; i++) R.tri(b, b.clone().add(V(k * bh * (1.6 + i * 0.25), bh * (1.1 - i * 0.35), -bh * (0.4 + i * 0.5))), b.clone().add(V(k * bh * (1.3 + i * 0.25), bh * (0.7 - i * 0.35), -bh * (0.9 + i * 0.5))), i % 2 ? (cols.wing || '#f4f0ff') : light(cols.wing || '#f4f0ff', 0.2), [[R.B(bn), 1]], [[R.B(bn), 1]], [[R.B(bn), 1]], { double: true, glow: !!cols.wingGlow }); } }
+  // the tail tip
+  if (tip && F.has('puff')) R.prim(shapes.ico(1), M(tip.x, tip.y, tip.z, 0, 0, 0, bw * (D.puff || 1.4), bw * (D.puff || 1.4), bw * (D.puff || 1.4) * 1.2), cols.puff || light(top, 0.4), R.B(tl));
+  if (tip && F.has('flame')) for (let i = 0; i < 4; i++) spike(R, R.B(tl), tip.clone().add(V((i - 1.5) * bw * 0.12, 0, 0)), tip.clone().add(V((i - 1.5) * bw * 0.3, bw * (1.2 + (i % 2) * 0.6), -bw * 0.3)), bw * 0.22, i % 2 ? (cols.flame || '#ff8a2a') : '#ffd040', { glow: true, n: 5 });
+  if (tip && F.has('tailgem')) spike(R, R.B(tl), tip, tip.clone().add(V(0, bw * 0.5, -bw * 1.6)), bw * 0.4, cols.gem || '#7af0ff', { glow: true, n: 4 });
+}
+
 /* ---------------- templates (cached per species + variant) ---------------- */
 const CACHE = new Map();
 export function creatureTemplate(sp, variant, VARIANTS) {
@@ -1107,6 +1167,7 @@ export function creatureTemplate(sp, variant, VARIANTS) {
   if (V0 && V0.cols) cols = typeof V0.cols === 'function' ? V0.cols(cols, sp) : { ...cols, ...V0.cols };
   const R = new RigBuilder(strSeed(key));
   const meta = PLANS[sp.body.plan](R, sp.body, cols, sp);
+  decorate(R, sp.body, cols, meta);
   const T = R.build();
   T.meta = meta; T.cols = cols;
   CACHE.set(key, T);

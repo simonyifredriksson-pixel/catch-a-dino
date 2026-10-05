@@ -32,6 +32,8 @@ import { Zoo, habitatOK } from './Zoo.js';
 import { Fishing } from './Fishing.js';
 import { WaterSigns } from './WaterSigns.js';
 import { Fossils } from '../world/Fossils.js';
+import { Base } from './Base.js';
+export const TEAM_SIZE = 6;
 import { Events } from './Events.js';
 import { Quests } from './Quests.js';
 import { Build, exhibitPrice } from './Build.js';
@@ -40,6 +42,7 @@ import { Panels } from '../ui/Panels.js';
 import { Inventory } from '../ui/Inventory.js';
 import { newWorld, migrate, saveWorld, saveProfile, creatureRecord } from './State.js';
 import { SPECIES, SP, RARITY, SIZE, VARIANTS } from '../data/Species.js';
+import { JOBS } from '../data/Creatures.js';
 import { TOOLS, SIZE_RANK } from '../data/Tools.js';
 import { ITEMS, UPGRADES } from '../data/Items.js';
 import { HABITATS, EX_SIZES, DECOR, PLOTS } from '../data/Build.js';
@@ -92,6 +95,7 @@ export class Game {
     this.landmarks = new Landmarks(this);
     this.landmarks.build();
     this.fossils = new Fossils(this); this.fossils.build();
+    this.base = new Base(this); this.base.build();
     for (const it of this.landmarks.items) this.addInteract(it);
     this.world = {
       lavaFlows: this._lavaFlows(),
@@ -182,7 +186,7 @@ export class Game {
     this.cam.yaw = 0; this.cam.pitch = 0.2;
     if (fresh) {
       const d = Object.values(this.W.creatures).find(r => r.sp === 'dryo');
-      this.profile.hotbar = ['tool:rope', 'tool:reedrod', d ? 'cr:' + d.uid : null, 'tool:binoculars', 'item:berries', 'item:fish', 'item:meat', 'tool:journal', null, null];
+      this.profile.hotbar = ['tool:rope', 'tool:reedrod', d ? 'cr:' + d.uid : null, 'tool:axe', 'tool:pickaxe', 'tool:binoculars', 'item:berries', 'item:fish', 'tool:journal', null];
       this.profile.hotSeen = this.profile.hotbar.filter(Boolean);
       saveProfile(this.profile);
     }
@@ -190,7 +194,7 @@ export class Game {
     this.scatter.warm(this.player.pos);
     this.phase = 'play';
     this.cam.baseFov = this.profile.fov || 70;
-    if (fresh) setTimeout(() => { this.ui.banner('WELCOME TO HOME ISLAND!', 'Your zoo is small - the world out there is not. Follow the arrow to the dock.', 'good', 5); }, 800);
+    if (fresh) setTimeout(() => { this.ui.banner('WELCOME TO HOME ISLAND!', 'This island is your base. The world out there is full of creatures. Follow the arrow!', 'good', 5); }, 800);
     this.zoo.compute();
     Bus.emit('game:begin', { fresh });
   }
@@ -256,8 +260,8 @@ export class Game {
   packCreatures(owner = this.packKey) { return Object.values(this.W.creatures).filter(r => r.at === 'pack:' + owner); }
   spOf(r) { return SP[r.sp]; }
   ownerOf(pid) { return pid === this.me ? this.packKey : (this.net.profiles.get(pid)?.key || pid); }
-  crateCap(owner = this.packKey) { const base = UPGRADES.crate.levels[this.W.upg.crate || 0].cap; return base + (owner === this.packKey && this.player.mount?.has('carry') ? 8 : 0); }
-  crateUsed(owner = this.packKey) { return this.packCreatures(owner).reduce((s, r) => s + (r.starter || r.gift ? 0 : SIZE[SP[r.sp].size].crate), 0); }   // companions (Sprinkles, Shelly) walk beside you
+  crateCap() { return TEAM_SIZE; }   // your team: up to six creatures with you
+  crateUsed(owner = this.packKey) { return this.packCreatures(owner).length; }
   frozen() { return !!this.ui.panel || this.inv.open || this.build.active || this.chatOpen || this.player.koT > 0; }
   applySettings() {
     const p = this.profile;
@@ -278,7 +282,7 @@ export class Game {
     this.act({ k: 'seen', sp: c.spId });
     this.audio.tone(1500, 0.08, 'sine', 0.08); this.audio.tone(2000, 0.12, 'sine', 0.06, 0.005, 0, 0.08);
   }
-  onZooLevel(lv) { this.event({ k: 'banner', t: 'ZOO LEVEL UP! ' + '★'.repeat(lv), s: this.zoo.levelName + ' - new things to build and buy at the Ranger Station.', kind: 'good' }); this.event({ k: 'fanfare' }); }
+  onZooLevel(lv) { this.event({ k: 'banner', t: 'BASE LEVEL UP! ' + '★'.repeat(lv), s: this.zoo.levelName + ' - new things to build and buy at the Ranger Station.', kind: 'good' }); this.event({ k: 'fanfare' }); }
 
   /* ---------------- the admin panel ---------------- */
   adminCmd(cmd, arg) {
@@ -304,10 +308,10 @@ export class Game {
   }
   _admin(a, pid) {
     const W = this.W, owner = this.ownerOf(pid);
-    const give = (sp, v) => { const S = SP[sp]; const r = creatureRecord(sp, { v: v || null, size: 0.5 + Math.random() * 0.45, kg: Math.round(lerp(S.kg[0], S.kg[1], 0.7)), at: 'zoo' }); if (this.crateUsed(owner) + SIZE[S.size].crate <= this.crateCap(owner)) r.at = 'pack:' + owner; W.creatures[r.uid] = r; const d = W.dex[sp] ||= { seen: 0, caught: 0 }; d.seen++; d.caught++; if (v) { d.v ||= []; if (!d.v.includes(v)) d.v.push(v); } return r; };
+    const give = (sp, v) => { const S = SP[sp]; const r = creatureRecord(sp, { v: v || null, size: 0.5 + Math.random() * 0.45, kg: Math.round(lerp(S.kg[0], S.kg[1], 0.7)), at: 'zoo' }); if (this.crateUsed(owner) + 1 <= this.crateCap(owner)) r.at = 'pack:' + owner; W.creatures[r.uid] = r; const d = W.dex[sp] ||= { seen: 0, caught: 0 }; d.seen++; d.caught++; if (v) { d.v ||= []; if (!d.v.includes(v)) d.v.push(v); } return r; };
     switch (a.cmd) {
       case 'money': W.money += +a.arg; this.audio.cash(); break;
-      case 'give': { const [sp, v] = String(a.arg).split(':'); const r = give(sp, v); this._to(pid, { k: 'toast', t: (v ? VARIANTS[v].name + ' ' : '') + SP[sp].name + (r.at === 'zoo' ? ' is in the holding pen (crate full).' : ' is in your crate!'), kind: 'good' }); break; }
+      case 'give': { const [sp, v] = String(a.arg).split(':'); const r = give(sp, v); this._to(pid, { k: 'toast', t: (v ? VARIANTS[v].name + ' ' : '') + SP[sp].name + (r.at === 'zoo' ? ' went home to your base (team full).' : ' joined your team!'), kind: 'good' }); break; }
       case 'giveAll': for (const s of SPECIES) { const r = give(s.id); r.at = 'zoo'; } this._to(pid, { k: 'toast', t: 'One of every species is waiting in the holding pen.', kind: 'good' }); break;
       case 'dexAll': for (const s of SPECIES) { const d = W.dex[s.id] ||= { seen: 0, caught: 0 }; d.seen = Math.max(1, d.seen); } break;
       case 'tools': for (const k in TOOLS) W.tools[k] = 1; break;
@@ -348,13 +352,13 @@ export class Game {
       case 'unload': {
         const list = this.packCreatures(owner).filter(r => !r.starter && !r.gift); if (!list.length) return fail('Your crate is empty.');
         for (const r of list) r.at = 'zoo';
-        toast(list.length + ' animal' + (list.length > 1 ? 's' : '') + ' moved to the holding pen. Put them on show (Animals tab, or at an exhibit gate).', 'good');
+        toast(list.length + ' creature' + (list.length > 1 ? 's' : '') + ' went home to the base. Give them jobs in the Creatures tab.', 'good');
         Bus.emit('zoo:unload', { n: list.length });
         break;
       }
       case 'move': {
         const r = W.creatures[a.uid]; if (!r) return;
-        if (a.to === 'pack') { if (this.crateUsed(owner) + SIZE[SP[r.sp].size].crate > this.crateCap(owner)) return fail('Not enough room in your crate.'); r.at = 'pack:' + owner; }
+        if (a.to === 'pack') { if (this.crateUsed(owner) + 1 > this.crateCap(owner)) return fail('Your team is full (6). Send someone home to the base first.'); r.at = 'pack:' + owner; }
         else if (a.to === 'zoo') r.at = 'zoo';
         else if (a.to.startsWith('ex:')) {
           const E = this.zoo.ex.get(a.to.slice(3)); if (!E) return;
@@ -368,11 +372,12 @@ export class Game {
         this.zoo.syncCreatures(); this.zoo.compute();
         break;
       }
+      case 'job': { const r = W.creatures[a.uid]; if (!r) return; r.job = a.job || null; const b = this.base.byUid.get(a.uid); if (b) { b.ai.st = 'idle'; b.ai.t = 0; b.ai.node = null; this.base._uncarry(b); } toast((r.name || SP[r.sp].name) + (r.job ? ' is now on ' + JOBS[r.job].name.toLowerCase() + ' duty.' : ' is taking it easy.'), 'good'); break; }
       case 'buy': this._buy(a, pid, fail, toast); break;
       case 'sell': {
         let total = 0;
-        for (const k of a.id === '*' ? Object.keys(ITEMS).filter(k => ITEMS[k].kind === 'find') : [a.id]) { const n = W.items[k] || 0; if (!n || ITEMS[k].kind !== 'find') continue; total += n * ITEMS[k].sell; W.items[k] = a.id === '*' ? 0 : n - 1; if (a.id !== '*') total = ITEMS[k].sell; }
-        if (total) { this.earn(total, null, false, 'Sold'); this.audio.cash(); }
+        for (const k of a.id === '*' ? Object.keys(ITEMS).filter(k => ITEMS[k].kind === 'find' || ITEMS[k].kind === 'res') : [a.id]) { const n = W.items[k] || 0; if (!n || (ITEMS[k].kind !== 'find' && ITEMS[k].kind !== 'res')) continue; total += n * ITEMS[k].sell; W.items[k] = a.id === '*' ? 0 : n - 1; if (a.id !== '*') total = ITEMS[k].sell; }
+        if (total) { this.earn(total, null, false, 'Sold'); this.audio.cash(); W.stats.sold = (W.stats.sold || 0) + 1; }
         break;
       }
       case 'build': this._build(a, pid, fail); break;
@@ -414,6 +419,7 @@ export class Game {
         break;
       }
       case 'throw': break;
+      case 'hitNode': this.base.hit(a.id, a.dmg || 1, { player: pid }); break;
       case 'skipTut': this.quests.skip(); break;
       case 'admin': this._admin(a, pid); break;
     }
@@ -434,16 +440,11 @@ export class Game {
     const rec = creatureRecord(a.sp, { uid: escaped || undefined, v: a.v, size: a.size, kg: a.kg || lerp(sp.kg[0], sp.kg[1], a.size), traits, by: pid });
     // into the crate if it fits; otherwise airlifted (free with the drone, a fee without)
     const owner = this.ownerOf(pid);
-    const fits = this.crateUsed(owner) + SIZE[sp.size].crate <= this.crateCap(owner);
+    const fits = this.crateUsed(owner) + 1 <= this.crateCap(owner);
     let where;
     if (escaped) { rec.at = 'zoo'; where = 'Back to the holding pen with you!'; }
-    else if (fits) { rec.at = 'pack:' + owner; where = 'Added to your crate (' + (this.crateUsed(owner) + SIZE[sp.size].crate) + '/' + this.crateCap(owner) + ').'; }
-    else {
-      rec.at = 'zoo';
-      const fee = W.upg.drone ? 0 : { S: 40, M: 120, L: 350, XL: 900 }[sp.size];
-      if (fee) { W.money = Math.max(0, W.money - fee); where = 'Crate full - a ranger truck took it to the zoo (' + money(fee) + ').'; }
-      else where = 'Crate full - your Airlift Drone flew it to the zoo.';
-    }
+    else if (fits) { rec.at = 'pack:' + owner; where = 'It joined your team (' + (this.crateUsed(owner) + 1) + '/' + this.crateCap(owner) + ').'; }
+    else { rec.at = 'zoo'; where = 'Your team is full - it went home to your base.'; }
     W.creatures[rec.uid] = rec;
     W.stats.caught = (W.stats.caught || 0) + 1;
     // the field journal
@@ -462,7 +463,7 @@ export class Game {
     try { this._buy0(a, fail, toast, W, lv); } finally { if (W.money < m0) W.stats.bought = (W.stats.bought || 0) + 1; }
   }
   _buy0(a, fail, toast, W, lv) {
-    if (a.what === 'tool') { const T = TOOLS[a.id]; if (!T || W.tools[a.id]) return; if (T.level > lv) return fail('Needs a ' + T.level + '-star zoo.'); if (!this.spend(T.price)) return fail('Not enough money.'); W.tools[a.id] = 1; toast('Bought: ' + T.name + '! It is on your hotbar.', 'good'); this.audio.cash(); }
+    if (a.what === 'tool') { const T = TOOLS[a.id]; if (!T || W.tools[a.id]) return; if (T.level > lv) return fail('Needs a ' + T.level + '-level base.'); if (!this.spend(T.price)) return fail('Not enough money.'); W.tools[a.id] = 1; toast('Bought: ' + T.name + '! It is on your hotbar.', 'good'); this.audio.cash(); }
     if (a.what === 'item') { const I = ITEMS[a.id], n = a.n || 1; if (!I) return; if ((I.level || 0) > lv) return fail('Locked.'); if (!this.spend(I.price * n)) return fail('Not enough money.'); W.items[a.id] = (W.items[a.id] || 0) + n; this.audio.cash(); }
     if (a.what === 'upg') { const U = UPGRADES[a.id], l = W.upg[a.id] || 0, nx = U.levels[l + 1]; if (!nx) return; if (!this.spend(nx.price)) return fail('Not enough money.'); W.upg[a.id] = l + 1; toast(U.name + ' upgraded!', 'good'); this.audio.cash(); }
     if (a.what === 'plot') { const np = PLOTS[(W.plot || 0) + 1]; if (!np) return; if (!this.spend(np.price)) return fail('Not enough money.'); W.plot = (W.plot || 0) + 1; this.zoo.rebuild(); toast('Your zoo grew! More room to build.', 'good'); this.audio.cash(); this.event({ k: 'zoo' }); }
@@ -562,7 +563,7 @@ export class Game {
     if (!d.photo) { d.photo = 1; m += base * 2; }
     this.W.stats.photos = (this.W.stats.photos || 0) + 1;
     this.earn(m, null, true);
-    this._to(pid, { k: 'toast', t: 'Photo of a ' + sp.name + (act > 1 ? ' in action' : '') + ' sold to the Daily Dino: ' + money(m) + '!', kind: 'good' });
+    this._to(pid, { k: 'toast', t: 'Photo of a ' + sp.name + (act > 1 ? ' in action' : '') + ' sold to the Ranger Gazette: ' + money(m) + '!', kind: 'good' });
   }
 
   /* ---------------- events ---------------- */
@@ -571,6 +572,8 @@ export class Game {
     switch (e.k) {
       case 'toast': this.ui.toast(e.t, e.kind); break;
       case 'banner': this.ui.banner(e.t, e.s, e.kind, 4); if (e.kind === 'bad') this.audio.alarm(); else this.audio.discover(); break;
+      case 'nodeHit': case 'node': this.base.onEvent(e); break;
+      case 'gather': { const y = this.terrain.ground(e.x, e.z) + 2; this.ui.floater('+' + e.n + ' ' + ITEMS[e.res].name, new THREE.Vector3(e.x, y, e.z), 'res'); if (e.pid === this.me || !e.pid) this.audio.coin(); break; }
       case 'quest': this.ui.banner('QUEST COMPLETE: ' + e.title.toUpperCase(), '+ ' + money(e.pay), 'good', 3.5); this.audio.level(); break;
       case 'fanfare': this.audio.level(); break;
       case 'weather': if (e.w === 'storm') this.ui.toast('A thunderstorm is rolling in. Some say a creature rides the lightning...', 'warn'); else if (e.w === 'rain') this.ui.toast('It is starting to rain.', 'info'); break;
@@ -625,6 +628,7 @@ export class Game {
     // the world
     this.wild.update(dt); J('wild');
     this.zoo.update(dt); J('zoo');
+    this.base.update(dt); J('base');
     this.events.update(dt); J('events');
     this.quests.update(dt); J('quests');
     this._hatchery();

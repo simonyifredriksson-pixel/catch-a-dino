@@ -43,6 +43,19 @@ export class Tools {
     if (TOOLS[id]?.behavior !== 'light') this.lantern = false;
   }
 
+  /** the axe and the pickaxe: click a spot near you */
+  chop(dt, input, click) { this._gather(click, 'chop'); }
+  mine(dt, input, click) { this._gather(click, 'mine'); }
+  _gather(click, kind) {
+    const G = this.g; if (!click || this.swingT > 0) return;
+    this.swingT = 0.35;
+    const n = G.base.nearTool(G.player.pos, kind);
+    if (!n) { if (Math.random() < 0.3) G.ui.toast(kind === 'chop' ? 'Walk up to a tree and click to chop it.' : 'Walk up to a rock and click to mine it.', 'info'); return; }
+    if (n.type === 'bigtree') return G.ui.toast('This ancient tree is too big for an axe. A strong lumber creature can fell it.', 'warn');
+    if (n.type === 'gem') return G.ui.toast('Crystal is too hard for a stone pickaxe. A strong mining creature can break it.', 'warn');
+    G.act({ k: 'hitNode', id: n.id, dmg: 1.5 });
+    G.player.yaw = Math.atan2(n.x - G.player.pos.x, n.z - G.player.pos.z);
+  }
   /** the field journal: click to read it */
   journal(dt, input, click) { if (click) this.g.panels.open('journal'); }
 

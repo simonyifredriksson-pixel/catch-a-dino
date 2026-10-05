@@ -208,7 +208,7 @@ export class Inventory {
       return `<div class="islot ${e.on ? 'eq' : ''} ${i === this.sel ? 'sel' : ''}" data-i="${i}" style="--rc:${e.rcss || 'transparent'}"><img src="${this.icon(e)}" alt="">${e.count != null ? `<span class="cnt">${e.count}</span>` : ''}${hk >= 0 ? `<span class="hk">${(hk + 1) % 10}</span>` : ''}${e.rcss ? '<i class="rar"></i>' : ''}</div>`;
     }).join('');
     this.el.querySelector('.inv-empty').textContent = list.length ? '' : {
-      creatures: 'Your crate is empty. Go and catch something! (Animals at the zoo are managed at the Ranger Station.)',
+      creatures: 'Nobody on your team yet. Go and catch something! (Creatures at your base are managed at the Ranger Station.)',
       tools: 'No tools.', items: 'Nothing here. Bait is sold at the Ranger Station; dig spots and cracks hide finds.', gear: 'No upgrades yet. The Ranger Station sells them.' }[this.tab];
     const e = list[this.sel];
     this.card.style.display = e ? '' : 'none';

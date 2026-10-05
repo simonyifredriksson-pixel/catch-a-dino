@@ -43,7 +43,7 @@ export class Build {
   toggle() {
     const G = this.g;
     if (this.active) return this.exit();
-    if (!this.canEnter()) return G.ui.toast('You can only build at your zoo.', 'warn');
+    if (!this.canEnter()) return G.ui.toast('You can only build at your base.', 'warn');
     if (G.catching.busy || G.player.riding) return G.ui.toast('Get off your mount first.', 'warn');
     this.active = true; G.input.unlock(); this.focus.set(G.player.pos.x, ZOO.y, G.player.pos.z);
     this.yaw = G.cam.yaw; this.el.classList.add('on'); this.render(); G.audio.open();
@@ -77,9 +77,9 @@ export class Build {
     const a = t.dataset.a, v = t.dataset.v, lv = this.g.zoo.level;
     this.g.audio.click();
     if (a === 'cat') { this.cat = v; this.sell = false; const it = this.items(); if (it.length && !it.find(i => i.k === this.key)) this.key = it[0].k; }
-    if (a === 'hab') { if (HABITATS[v].level > lv) return this.g.ui.toast('Unlocks at ' + HABITATS[v].level + ' zoo stars.', 'warn'); this.hab = v; }
-    if (a === 'size') { if (SIZE_LEVEL[v] > lv) return this.g.ui.toast('Unlocks at ' + SIZE_LEVEL[v] + ' zoo stars.', 'warn'); this.size = v; }
-    if (a === 'item') { if (DECOR[v].level > lv) return this.g.ui.toast('Unlocks at ' + DECOR[v].level + ' zoo stars.', 'warn'); this.key = v; }
+    if (a === 'hab') { if (HABITATS[v].level > lv) return this.g.ui.toast('Unlocks at ' + HABITATS[v].level + ' base levels.', 'warn'); this.hab = v; }
+    if (a === 'size') { if (SIZE_LEVEL[v] > lv) return this.g.ui.toast('Unlocks at ' + SIZE_LEVEL[v] + ' base levels.', 'warn'); this.size = v; }
+    if (a === 'item') { if (DECOR[v].level > lv) return this.g.ui.toast('Unlocks at ' + DECOR[v].level + ' base levels.', 'warn'); this.key = v; }
     this.render();
   }
 

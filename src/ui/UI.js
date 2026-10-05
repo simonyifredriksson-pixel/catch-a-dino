@@ -14,6 +14,7 @@
 import * as THREE from '../../lib/three.module.js';
 import { SP, RARITY, SIZE, VARIANTS } from '../data/Species.js';
 import { ABILITIES } from '../data/Abilities.js';
+import { JOBS, PERSONALITY } from '../data/Creatures.js';
 import { TOOLS } from '../data/Tools.js';
 import { BIOMES } from '../data/Biomes.js';
 import { BEACONS, PLACES } from '../data/Places.js';
@@ -59,6 +60,7 @@ export class UI {
       <div id="say"><div class="sf"></div><div class="sn"></div><div class="sx"></div></div>
       <div id="sneak">SNEAKING - quieter, easier snares</div>
       <div id="bite">BITE!</div>
+      <div id="faint"><div class="fn"></div><div class="fk"><span><b class="key">E</b> Catch it</span><span><b class="key">Q</b> Let it go</span></div><div class="ft"><i></i></div></div>
     `);
     this.ring = $('ring'); this.ringCtx = this.ring.getContext('2d');
   }
@@ -114,13 +116,14 @@ export class UI {
     const icon = G.inv.icons.creature(rec.sp, rec.v);
     const ab = sp.abilities.filter(a => ABILITIES[a]).slice(0, 5);
     C.innerHTML = `
-      <div class="cc-top" style="--rc:${R.css}"><span class="cc-r">${R.name}</span>${o.isNew ? '<span class="cc-new">NEW SPECIES!</span>' : ''}${rec.v ? `<span class="cc-v">${VARIANTS[rec.v].name.toUpperCase()}</span>` : ''}</div>
+      <div class="cc-top" style="--rc:${R.css}"><span class="cc-r">${R.name}</span>${o.isNew ? '<span class="cc-new">NEW CREATURE!</span>' : ''}${rec.v ? `<span class="cc-v">${VARIANTS[rec.v].name.toUpperCase()}</span>` : ''}</div>
       <img src="${icon}" alt="">
       <div class="cc-name">${esc(sp.name)}</div>
       <div class="cc-sci">${esc(sp.sci)}</div>
       <div class="cc-stars" style="color:${R.css}">${Array.from({ length: R.stars }, () => svg('star')).join('')}</div>
       <div class="cc-stats"><span>${svg('weight')}${fmtKg(rec.kg)}</span><span>${svg('box')}${SIZE[sp.size].name}</span>${rec.traits?.length ? `<span>${svg('star')}${esc(rec.traits.join(', '))}</span>` : ''}</div>
       <div class="cc-ab">${ab.map(a => `<span class="chip">${svg(ABILITIES[a].icon)}${esc(ABILITIES[a].name)}</span>`).join('')}</div>
+      <div class="cc-ab">${Object.entries(sp.jobs || {}).filter(([, v]) => v > 0).map(([j, v]) => `<span class="chip job">${esc(JOBS[j].name)} ${'&#9679;'.repeat(v)}</span>`).join('')}${sp.personality ? `<span class="chip pers">${esc(PERSONALITY[sp.personality])}</span>` : ''}</div>
       <div class="cc-where">${esc(o.where || '')}</div>
       ${o.reward ? `<div class="cc-pay">+ ${money(o.reward)} research grant</div>` : ''}
       <div class="cc-foot"><b class="key">E</b> / click to continue</div>`;
@@ -147,10 +150,14 @@ export class UI {
     this.root.classList.toggle('hidden', G.phase !== 'play' || !!G.build?.active || G.hideHud);
     // ----- catching
     const C = G.catching.hud();
+    const fz = C.state === 'faint' && C.c, FZ = $('faint');
+    FZ.classList.toggle('on', !!fz);
+    if (fz) { const nm = (W.dex[C.c.spId]?.caught ? '' : 'NEW! ') + C.c.sp.name; if (FZ.dataset.n !== nm) { FZ.dataset.n = nm; FZ.querySelector('.fn').textContent = 'The ' + C.c.sp.name + ' fainted!'; } FZ.querySelector('.ft i').style.width = Math.round(C.faint * 100) + '%'; }
     const fc = Fh.state === 'charge';
     $('charge').classList.toggle('on', C.state === 'charge' || fc);
     $('charge').querySelector('i').style.width = Math.round((fc ? Fh.charge : C.charge) * 100) + '%';
     const fight = C.state === 'fight' && C.bar;
+    void 0;
     $('tug').classList.toggle('on', !!fight);
     this.root.classList.toggle('fighting', !!fight);
     if (fight) {
@@ -192,7 +199,8 @@ export class UI {
     $('prompt').innerHTML = it && !fight ? `<b class="key">E</b> ${esc(it.label())}` : '';
     $('prompt').classList.toggle('on', !!it && !fight);
     let ht = '';
-    if (C.state === 'snare') ht = 'CLICK when the shrinking ring is inside the <b>green band</b>!';
+    if (C.state === 'faint') ht = '';
+    else if (C.state === 'snare') ht = 'CLICK when the shrinking ring is inside the <b>green band</b>!';
     else if (fight) ht = 'Hold <b class="key">LMB</b> to pull &nbsp; let go to give slack &nbsp; <b class="key">A</b>/<b class="key">D</b> to brace when it lunges';
     else if (C.state === 'charge') ht = 'Release to throw';
     else if (Fh.state === 'charge') ht = 'Release to cast - longer hold, farther cast';
@@ -245,7 +253,8 @@ export class UI {
     this._tT -= dt; if (this._tT > 0) return; this._tT = 0.2;
     $('money').querySelector('b').textContent = money(W.money).replace('$', '');
     const Z = G.zoo;
-    $('zoochip').innerHTML = `<span class="zs">${'&#9733;'.repeat(Z.level)}<i>${'&#9733;'.repeat(Math.max(0, 7 - Z.level))}</i></span><span class="za">Zoo income <b>+${money(Z.income || 0)}/min</b></span>`;
+    const nsp = Object.values(W.dex).filter(d => d.caught).length, inv = W.items;
+    $('zoochip').innerHTML = `<span class="zs">${'&#9733;'.repeat(Z.level)}<i>${'&#9733;'.repeat(Math.max(0, 7 - Z.level))}</i></span><span class="za"><b>${nsp}</b> species &middot; <b>${inv.wood || 0}</b> wood &middot; <b>${inv.stone || 0}</b> stone${inv.ore ? ` &middot; <b>${inv.ore}</b> ore` : ''}${inv.gem ? ` &middot; <b>${inv.gem}</b> crystal` : ''}</span>`;
     const tod = W.tod, hh = Math.floor(tod * 24), mm = Math.floor((tod * 24 - hh) * 60);
     const wk = W.weather.kind, wi = { clear: G.sky.state.night > 0.5 ? 'Clear night' : 'Sunny', cloudy: 'Cloudy', rain: 'Rain', storm: 'Thunderstorm' }[wk];
     const b = G.terrain.biome(P.pos.x, P.pos.z);

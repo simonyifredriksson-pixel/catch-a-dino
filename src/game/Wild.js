@@ -329,7 +329,7 @@ export class Wild {
     if (pm && pm.diet === 'carn' && sp.diet !== 'carn') detect *= 1.3;
     const night = (G.sky?.state.night || 0) > 0.5, nocturnal = !!sp.when?.night;
     // reactions to you (unless something more urgent is going on)
-    if (near && !['flee', 'charge', 'hunt', 'held', 'bait', 'back'].includes(A.st) && !(c.calm > 0)) {
+    if (near && !['flee', 'charge', 'hunt', 'held', 'bait', 'back'].includes(A.st) && !(c.calm > 0) && !(c.flyer && A.st === 'sleep')) {
       if (sp.temper === 'skittish' && d < detect) { A.st = 'flee'; A.t = 6 + Math.random() * 4; A.from = P.clone(); if (A.leader === undefined) this._herd(c, 'flee', P); c.anim.play(Math.random() < 0.5 ? 'call' : 'shake'); }
       else if (sp.temper === 'territorial' && d < 22 && A.st !== 'warn') { A.st = 'warn'; A.t = 2.6; A.target = near.pid; c.anim.play('roar'); G.event({ k: 'roar', id: c.id }); }
       else if (sp.temper === 'aggressive' && d < detect && !(pm && pm.abilities.includes('roar') && RARITY[pm.rarity].stars > RARITY[sp.rarity].stars)) { A.st = 'hunt'; A.t = 22; A.target = near.pid; c.anim.play('roar'); G.event({ k: 'roar', id: c.id }); }
@@ -444,6 +444,11 @@ export class Wild {
     const G = this.g, A = c.ai, sp = c.sp;
     const [f0, f1] = sp.flyH || [20, 60];
     c.astate = null;
+    if (A.st === 'sleep') {   // asleep on the ground: sneak up and it stays asleep
+      c.flying = false; c.stepGround(dt, c.yaw, 0, {}); c.astate = 'sleep';
+      if (near && d < (near.crouch ? 3 : 9)) { c.takeOff(); A.st = 'flee'; A.t = 8; A.from = near.pos.clone(); A.alt = f0 + 10; c.anim.play('shake'); }
+      return;
+    }
     if (A.st === 'perch' || !c.flying) {
       c.flying = false;
       c.stepGround(dt, c.yaw, 0, {});

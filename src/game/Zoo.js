@@ -276,8 +276,10 @@ export class Zoo {
     appeal *= 1 + kinds * 0.03;
     this.appeal = Math.round(appeal);
     // the income: what the zoo earns by itself, every minute, wherever you are
-    this.income = Math.round(appeal * 2.5);
-    let lv = 0; while (lv < ZOO_LEVELS.length - 1 && this.income >= ZOO_LEVELS[lv + 1]) lv++;
+    // the base level comes from your collection: every species you have caught counts (rarer counts more)
+    this.score = Math.round(Object.entries(W.dex).filter(([, d]) => d.caught).reduce((s, [id]) => s + (RARITY[SP[id]?.rarity]?.value || 1) * 10, 0));
+    this.income = 0;
+    let lv = 0; while (lv < ZOO_LEVELS.length - 1 && this.score >= ZOO_LEVELS[lv + 1]) lv++;
     lv = Math.max(lv, Math.min(ZOO_LEVELS.length - 1, W.adminLevel || 0));   // admin panel
     if (lv > (W.zooLevel || 0)) { W.zooLevel = lv; this.g.onZooLevel(lv); }
     this.level = lv;
@@ -319,4 +321,4 @@ export class Zoo {
   /** keep the player out of fences except through the gate (colliders do it) */
   blockPlayer() {}
 }
-void lerp; void RARITY; void Bus;
+void lerp; void Bus;

@@ -25,6 +25,8 @@
    lore               one line for the dex
    hint               how to find it (shown in the dex before you catch one) */
 
+import { applyRoster } from './Creatures.js';
+
 export const RARITY = {
   common:    { name: 'Common',    css: '#c8d0d8', stars: 1, w: 100, value: 1 },
   uncommon:  { name: 'Uncommon',  css: '#6ee07a', stars: 2, w: 40, value: 2.2 },
@@ -315,3 +317,5 @@ export const SPECIES = [
 ];
 export const SP = Object.fromEntries(SPECIES.map(s => [s.id, s]));
 export const SPECIES_ORDER = SPECIES.map(s => s.id);
+// every slot becomes its creature (names, looks, jobs, personality)
+applyRoster(SPECIES);

@@ -53,8 +53,8 @@ export class Catching {
   }
   get busy() { return this.state !== 'idle'; }
   get aiming() { return this.state === 'charge'; }
-  get fighting() { return this.state === 'fight'; }
-  get moveMul() { return { fight: 0.32, snare: 0.15, charge: 0.6, fly: 0.9, reel: 1, assist: 0.4 }[this.state] ?? 1; }
+  get fighting() { return this.state === 'fight' || this.state === 'faint'; }
+  get moveMul() { return { faint: 0.5, fight: 0.32, snare: 0.15, charge: 0.6, fly: 0.9, reel: 1, assist: 0.4 }[this.state] ?? 1; }
   get tool() { return TOOLS[this.toolId] || TOOLS.rope; }
   kindOf(c) { return c.flying ? 'air' : c.pos.y < -c.height * 0.55 ? 'water' : (c.swimmer || c.inWater) ? 'surface' : 'land'; }
   /** can tool T catch this kind? (a swimmer at the surface: any lasso or harpoon will do) */
@@ -77,6 +77,7 @@ export class Catching {
   }
 
   cancel(silent = false) {
+    if (this.state === 'faint') return this._letGo(silent);
     if (this.state === 'fight' && !silent) return this._lose('You let it go.');
     if (this.c && (this.state === 'snare' || this.state === 'fight')) this.g.wild.release(this.c, 'calm');
     if (this.state === 'assist' && this.c) this.g.act({ k: 'unassist', id: this.c.id });
@@ -130,6 +131,7 @@ export class Catching {
       }
       case 'snare': this._snare(dt, click); break;
       case 'fight': this._fight(dt, input, lmb); break;
+      case 'faint': this._faint(dt, input); break;
       case 'assist': this._assist(dt, input, lmb); break;
     }
     if (this.state !== 'charge') G.audio.whirl(false);
@@ -375,7 +377,7 @@ export class Catching {
     this._drawRope(this.tension, dt);
     if (Math.random() < dt * (1 + pull)) G.fx.dust(c.pos.x, c.pos.y, c.pos.z, Math.min(2.5, c.height * 0.3));
     // --- outcomes
-    if (B.catch >= 1) return this._land();
+    if (B.catch >= 1) return this._faintStart();
     if (B.catch <= 0) return this._lose(over > 0.2 ? 'SNAP! Too strong for the ' + T.name + '.' : 'It broke free!');
     if (B.held > F.cap) return this._lose('After all that, the rope finally gives.');
   }
@@ -468,9 +470,47 @@ export class Catching {
     this.rope.color = tension > 0.98 ? '#ff7a5a' : tension > 0.82 ? '#ffd27a' : '#c8a878';
   }
 
+  /* ---------------- it fainted: catch it, or let it go ---------------- */
+  _faintStart() {
+    const G = this.g, c = this.c;
+    this.state = 'faint'; this.faintT = 20; this.faintDur = 20;
+    c.anim.play('shake'); c.astate = c.swimmer ? null : 'sleep'; c.speed = 0;
+    G.audio.thud?.(c.pos, Math.min(1, c.height / 4)); G.cam.shake(0.2);
+    G.fx.burst(c.pos.x, c.pos.y + c.height, c.pos.z, 'spark', 14, { scale: 1.2 });
+    const A = G.player.A; A.pull = 0.2; A.drag = 0;
+    Bus.emit('catch:faint', { sp: c.spId });
+  }
+  _faint(dt, input) {
+    const G = this.g, c = this.c;
+    if (!c || c.gone) return this._clear();
+    this.faintT -= dt;
+    // lie still (a swimmer floats belly-up), stars spin over its head
+    c.speed = 0;
+    if (c.swimmer) { c.pos.y = damp(c.pos.y, -c.height * 0.15, 3, dt); c.roll = damp(c.roll, Math.PI * 0.85, 3, dt); c.under = false; }
+    else { c.astate = 'sleep'; c.pos.y = Math.max(G.terrain.ground(c.pos.x, c.pos.z), c.pos.y - dt * 6); }
+    this._starT = (this._starT || 0) - dt;
+    if (this._starT <= 0) { this._starT = 0.25; const a = G.time * 4; G.fx.burst(c.pos.x + Math.cos(a) * c.radius, c.pos.y + c.height * 1.1 + 0.4, c.pos.z + Math.sin(a) * c.radius, 'spark', 2, { scale: 0.8, speed: 0.2 }); }
+    this._drawRope(0.15, dt);
+    if (G.admin?.autoCatch || input.pressedRaw('KeyE')) return this._land();
+    if (input.pressedRaw('KeyQ')) return this._letGo();
+    if (this.faintT <= 0) { this.msg('It woke up and got away!', 'warn'); c.roll = 0; G.wild.release(c, 'flee'); this._clear(); Bus.emit('catch:lost', {}); }
+  }
+  _letGo(silent = false) {
+    const G = this.g, c = this.c;
+    if (c) {
+      c.roll = 0; c.calm = 90;
+      if (!silent) { this.msg('You let the ' + c.sp.name + ' go. It shakes itself off... and looks back at you before it leaves.', 'good'); G.fx.burst(c.pos.x, c.pos.y + c.height, c.pos.z, 'heart', 6); }
+      G.wild.release(c, 'calm');
+      const W = G.W; W.stats.released = (W.stats.released || 0) + 1;
+    }
+    this._clear();
+    Bus.emit('catch:released', { sp: c?.spId });
+  }
+
   /* ---------------- outcomes ---------------- */
   _land() {
     const G = this.g, c = this.c, F = this.F;
+    c.roll = 0;
     const info = { id: c.id, sp: c.spId, v: c.v, size: c.size, kg: c.kg, perfect: F.perfect, time: F.t, fishing: !!F.fishing, x: Math.round(c.pos.x), z: Math.round(c.pos.z) };
     G.audio.caught(RARITY[c.sp.rarity].stars);
     G.fx.burst(c.pos.x, c.pos.y + c.height * 0.6, c.pos.z, 'confetti', 40, { scale: 1.2 });
@@ -505,7 +545,7 @@ export class Catching {
   hud() {
     const F = this.F, B = this.bar;
     return {
-      state: this.state, charge: this.charge, ring: this.state === 'snare' ? 1 - this.ringT : 0, c: this.c,
+      faint: this.state === 'faint' ? this.faintT / this.faintDur : 0, state: this.state, charge: this.charge, ring: this.state === 'snare' ? 1 - this.ringT : 0, c: this.c,
       bar: F ? { zone: B.zone, band: this.tool.stats.band * (F.rage.on > 0 ? 0.65 : 1), pos: F.pos, target: F.target, catch: B.catch, on: B.on, over: F.fight - this._rating(this.tool), tier: F.tier, tired: B.tired, lunge: F.lunge.on > 0 ? F.lunge.dir : 0, lungeT: F.lunge.on, rage: F.rage.on > 0, helpers: Object.values(this.assists).filter(t => this.g.time - t < 1.2).length } : null,
       tension: this.tension || 0,
     };

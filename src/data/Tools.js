@@ -107,12 +107,14 @@ export const TOOLS = {
     desc: 'Glows faintly blue. Legends say it was made to land the thing at the bottom of the Trench.',
   },
   // ---- utilities
+  axe: { name: 'Stone Axe', kind: 'util', behavior: 'chop', rarity: 'common', price: 0, level: 0, color: '#8a8a90', desc: 'Click a tree to chop it. Big old trees need a strong lumber creature.' },
+  pickaxe: { name: 'Stone Pickaxe', kind: 'util', behavior: 'mine', rarity: 'common', price: 0, level: 0, color: '#8a8a90', desc: 'Click a rock or an ore vein to mine it. Crystal outcrops need a strong mining creature.' },
   journal: { name: 'Field Journal', kind: 'util', behavior: 'journal', rarity: 'common', price: 0, level: 0, color: '#8a4a2a', desc: 'Your own notes: every creature you have caught, your best catches, the places you have found. Click to open it (or press N).' },
-  binoculars: { name: 'Binoculars', kind: 'util', behavior: 'scan', rarity: 'common', price: 0, level: 0, color: '#3a3a4a', desc: 'Hold to zoom. Look at a creature to scan it into your Dino Dex (and see how strong it is).' },
+  binoculars: { name: 'Binoculars', kind: 'util', behavior: 'scan', rarity: 'common', price: 0, level: 0, color: '#3a3a4a', desc: 'Hold to zoom. Look at a creature to scan it into your Collection (and see how strong it is).' },
   machete: { name: 'Machete', kind: 'util', behavior: 'cut', rarity: 'common', price: 650, level: 0, color: '#b8c0c8', desc: 'Cuts through vine curtains. Some ruins are hidden behind them.' },
-  shovel: { name: 'Shovel', kind: 'util', behavior: 'dig', rarity: 'common', price: 400, level: 0, color: '#8a7050', desc: 'Dig up the sparkling mounds: fossils, amber - and eggs that hatch at the zoo.' },
+  shovel: { name: 'Shovel', kind: 'util', behavior: 'dig', rarity: 'common', price: 400, level: 0, color: '#8a7050', desc: 'Dig up the sparkling mounds: fossils, amber - and eggs that hatch at your base.' },
   lantern: { name: 'Lantern', kind: 'util', behavior: 'light', rarity: 'uncommon', price: 1400, level: 2, color: '#f0c050', desc: 'Lights up caves and the night. Some creatures are curious about it.' },
-  camera: { name: 'Field Camera', kind: 'util', behavior: 'photo', rarity: 'uncommon', price: 1800, level: 2, color: '#4a4a4a', desc: 'Photograph wild creatures. The zoo pays for good photos of rare ones.' },
+  camera: { name: 'Field Camera', kind: 'util', behavior: 'photo', rarity: 'uncommon', price: 1800, level: 2, color: '#4a4a4a', desc: 'Photograph wild creatures. The ranger office pays for good photos of rare ones.' },
 };
 export const TOOL_ORDER = Object.keys(TOOLS);
 export const SIZE_RANK = { S: 0, M: 1, L: 2, XL: 3 };

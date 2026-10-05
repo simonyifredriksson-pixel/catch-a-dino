@@ -156,6 +156,7 @@ svg { width: 1em; height: 1em; vertical-align: -0.12em; }
 #region .rt::after { content: ''; display: block; height: 3px; width: 60%; margin: 6px auto 8px; background: linear-gradient(90deg, transparent, #fff, transparent); }
 #floaters .floater { position: absolute; transform: translate(-50%, -50%); font: 1.2rem 'Lilita One', sans-serif; color: var(--gold); -webkit-text-stroke: 1.5px #3a2a08; paint-order: stroke fill; text-shadow: 0 2px 0 #3a2a08; white-space: nowrap; }
 #floaters .floater.spend { color: #ff8a6a; }
+#floaters .floater.res { color: #fff; font-size: 1rem; -webkit-text-stroke: 1.2px #2a3a1a; text-shadow: 0 2px 0 #2a3a1a; }
 #catchcard { position: absolute; left: 50%; bottom: 120px; transform: translate(-50%, 30px) scale(0.8); opacity: 0; width: 360px; background: var(--panel); border: 4px solid var(--ink); border-radius: 18px; padding: 0 16px 12px; text-align: center; box-shadow: var(--shadow), 0 0 40px rgba(255, 220, 80, 0.4); pointer-events: none; transition: all 0.35s cubic-bezier(.3, 1.5, .6, 1); }
 #catchcard.on { transform: translate(-50%, 0) scale(1); opacity: 1; pointer-events: auto; cursor: pointer; }
 .cc-top { margin: 0 -16px; padding: 6px; border-radius: 12px 12px 0 0; background: var(--rc); display: flex; justify-content: center; gap: 8px; }
@@ -394,3 +395,18 @@ svg { width: 1em; height: 1em; vertical-align: -0.12em; }
 .agrid button:hover { background: #ffe9a0; }
 .agrid img { width: 64px; height: 48px; object-fit: contain; }
 .agrid i { font-style: normal; font-size: 0.7rem; }
+
+/* it fainted: catch or let go */
+#faint { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); background: var(--panel); border: 4px solid var(--ink); border-radius: 16px; padding: 10px 18px 12px; text-align: center; box-shadow: var(--shadow); display: none; min-width: 300px; }
+#faint.on { display: block; animation: pop 0.3s; }
+#faint .fn { font: 1.5rem 'Lilita One', sans-serif; color: #3a6a2a; }
+#faint .fk { display: flex; gap: 18px; justify-content: center; margin: 8px 0 6px; font-weight: 900; font-size: 1.05rem; }
+#faint .ft { height: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden; }
+#faint .ft i { display: block; height: 100%; background: #e8a030; }
+
+/* the collection card */
+.dxrow { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px dashed rgba(0,0,0,0.12); font-size: 0.85rem; }
+.dxrow span { opacity: 0.7; font-weight: 700; }
+.dxjobs { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 4px; }
+
+.chip.job { background: #e8f4d8; } .chip.pers { background: #f4e8ff; }

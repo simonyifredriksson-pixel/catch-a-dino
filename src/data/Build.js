@@ -53,9 +53,9 @@ export const DECOR = {
   lamp:     { name: 'Lamp Post', cat: 'deco', art: 'lamp', price: 60, level: 0, r: 0.3, joy: 0.5 },
   bin:      { name: 'Bin', cat: 'deco', art: 'bin', price: 25, level: 0, r: 0.4, joy: 0.5 },
   flag:     { name: 'Banner Flag', cat: 'deco', art: 'flag', price: 70, level: 1, r: 0.3, joy: 1 },
-  statue:   { name: 'Dino Statue', cat: 'deco', art: 'statue', price: 600, level: 2, r: 1.5, joy: 4 },
+  statue:   { name: 'Creature Statue', cat: 'deco', art: 'statue', price: 600, level: 2, r: 1.5, joy: 4 },
   fountain: { name: 'Fountain', cat: 'deco', art: 'fountain', price: 1200, level: 3, r: 2.6, joy: 6 },
-  topiary:  { name: 'Topiary Dino', cat: 'deco', art: 'topiary', price: 450, level: 2, r: 1.4, joy: 3 },
+  topiary:  { name: 'Topiary Creature', cat: 'deco', art: 'topiary', price: 450, level: 2, r: 1.4, joy: 3 },
   balloon:  { name: 'Balloon Stall', cat: 'deco', art: 'balloon', price: 350, level: 1, r: 1, joy: 3 },
   platform: { name: 'Viewing Deck', cat: 'shop', art: 'platform', price: 1600, level: 2, r: 3.5, view: true },
   hatchery: { name: 'Hatchery', cat: 'shop', art: 'hatchery', price: 2500, level: 1, r: 4, unique: true },
@@ -69,6 +69,6 @@ export const DECOR_CATS = [
 ];
 /** zoo star levels: the income ($ a minute) needed for each */
 export const ZOO_LEVELS = [0, 35, 130, 380, 950, 2100, 4600, 10000];
-export const ZOO_LEVEL_NAMES = ['Roadside Pen', 'Little Zoo', 'Local Favourite', 'Dino Park', 'Famous Park', 'National Treasure', 'Wonder of the World', 'Legendary Sanctuary'];
+export const ZOO_LEVEL_NAMES = ['Camp', 'Outpost', 'Ranger Base', 'Creature Sanctuary', 'Famous Sanctuary', 'Grand Sanctuary', 'Wonder of the World', 'Legendary Sanctuary'];
 /** how much land you can build on: half-size of the buildable square per plot level */
 export const PLOTS = [{ half: 56, price: 0 }, { half: 72, price: 3000 }, { half: 88, price: 12000 }, { half: 100, price: 30000 }, { half: 112, price: 70000 }];

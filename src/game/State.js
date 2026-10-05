@@ -33,7 +33,7 @@ export function newWorld(hostKey) {
   const zx = ZOO.x, zz = ZOO.z;
   const W = {
     v: 2, money: 600, day: 1, tod: 0.34, weather: { kind: 'clear', t: 240 },
-    tools: { rope: 1, reedrod: 1, binoculars: 1, journal: 1 }, items: { berries: 6, meat: 2, fish: 5 },
+    tools: { rope: 1, reedrod: 1, axe: 1, pickaxe: 1, binoculars: 1, journal: 1 }, items: { berries: 6, meat: 2, fish: 5 },
     upg: { crate: 0, boots: 0, helmet: 0, coat: 0, glider: 0, saddle: 0, drone: 0, beacon: 0 },
     plot: 0,
     zoo: {
@@ -75,7 +75,7 @@ export function migrate(W) {
   W.zoo.paths ||= []; W.creatures ||= {}; W.dex ||= {}; W.flags ||= {}; W.gates ||= {}; W.found ||= {}; W.beacons ||= {}; W.players ||= {}; W.stats ||= {};
   for (const k of ['crate', 'boots', 'helmet', 'coat', 'glider', 'saddle', 'drone', 'beacon']) W.upg[k] ??= 0;
   W.plot ??= 0;
-  W.tools.journal ||= 1; W.journal ||= [];
+  W.tools.journal ||= 1; W.tools.axe ||= 1; W.tools.pickaxe ||= 1; W.journal ||= [];
   for (const e of W.zoo.exhibits) if ((e.id === 'ex1' || e.id === 'ex2') && e.size === 'S') e.size = 'M';   // the starter exhibits fit any tutorial catch
   return W;
 }

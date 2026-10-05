@@ -18,6 +18,7 @@ import { HABITATS, EX_SIZES, ZOO_LEVELS, ZOO_LEVEL_NAMES, PLOTS, DECOR } from '.
 import { BIOMES, ZOO, WORLD_HALF, REGIONS, ISLANDS, VALLEY, VOLCANO, TRENCH, GROTTO, DOCK } from '../data/Biomes.js';
 import { PLACES, BEACONS, INTERIORS } from '../data/Places.js';
 import { habitatOK } from '../game/Zoo.js';
+import { JOBS, PERSONALITY } from '../data/Creatures.js';
 import { svg } from './Inventory.js';
 import { esc, money, fmtKg, clamp } from '../core/Util.js';
 
@@ -64,6 +65,7 @@ export class Panels {
     if (a === 'buyPlot') G.act({ k: 'buy', what: 'plot' });
     if (a === 'unload') G.act({ k: 'unload' });
     if (a === 'take') G.act({ k: 'move', uid: v, to: 'pack' });
+    if (a === 'job') G.act({ k: 'job', uid: v, job: t.dataset.ex || null });
     if (a === 'place') G.act({ k: 'move', uid: v, to: 'ex:' + t.dataset.ex });
     if (a === 'hold') G.act({ k: 'move', uid: v, to: 'zoo' });
     if (a === 'release') { const r = W.creatures[v]; this.confirm('Release ' + (r?.name || SP[r?.sp]?.name) + '?', 'It goes back to the wild for good.', () => G.act({ k: 'release', uid: v })); return; }
@@ -86,7 +88,7 @@ export class Panels {
   /* ---------------- the Ranger Station ---------------- */
   _station() {
     const G = this.g, W = this.W, tab = this.tab;
-    const tabs = [['shop', 'Shop'], ['animals', 'Animals'], ['sell', 'Sell finds'], ['zoo', 'Your zoo']];
+    const tabs = [['shop', 'Shop'], ['animals', 'Creatures'], ['sell', 'Sell'], ['zoo', 'Your base']];
     let body = '';
     if (tab === 'shop') {
       const lv = G.zoo.level;
@@ -107,14 +109,16 @@ export class Panels {
     }
     if (tab === 'animals') {
       const pack = G.packCreatures(), hold = G.zoo.holding();
-      body += `<h3>Your crate <i>${G.crateUsed()} / ${G.crateCap()} slots</i></h3>`;
-      body += pack.length ? `<button class="wide" data-a="unload">Unload everything into the holding pen</button>` + pack.map(r => this._crRow(r, [['hold', 'To holding pen'], ...this._placeBtns(r)])).join('') : '<p class="dim">Nothing in your crate.</p>';
-      body += `<h3>Holding pen <i>${hold.length}</i></h3><p class="dim">Animals waiting for an exhibit. They do not count toward appeal until they are on show.</p>`;
-      body += hold.length ? hold.map(r => this._crRow(r, [...this._placeBtns(r), ['take', 'Into my crate'], ['release', 'Release']])).join('') : '<p class="dim">Empty.</p>';
+      body += `<h3>Your team <i>${pack.length} / ${G.crateCap()}</i></h3><p class="dim">The creatures that go with you. Ride them, use their abilities, swap them on the hotbar.</p>`;
+      body += pack.length ? pack.map(r => this._crRow(r, [['hold', 'Send home to the base']])).join('') : '<p class="dim">Nobody with you. Catch something!</p>';
+      body += `<h3>At your base <i>${hold.length}</i></h3><p class="dim">Creatures at the base live here and do the job you give them. Click a job to put them to work.</p>`;
+      body += hold.length ? hold.map(r => this._crRow(r, [...this._jobBtns(r), ['take', 'Join my team'], ['release', 'Release']])).join('') : '<p class="dim">Nobody at the base yet.</p>';
+      const show = Object.values(W.creatures).filter(r => r.at.startsWith('ex:'));
+      if (show.length) body += `<h3>In habitats <i>${show.length}</i></h3>` + show.map(r => this._crRow(r, [['hold', 'Back to the base'], ['take', 'Join my team']])).join('');
     }
     if (tab === 'sell') {
-      const finds = Object.keys(ITEMS).filter(k => ITEMS[k].kind === 'find' && W.items[k] > 0);
-      body += finds.length ? `<button class="wide" data-a="sellAll">Sell everything (${money(finds.reduce((s, k) => s + ITEMS[k].sell * W.items[k], 0))})</button>` + finds.map(k => `<div class="srow"><img src="${G.inv.icons.get('item:' + k, () => G.holdModel(k))}"><div class="sinfo"><b>${esc(ITEMS[k].name)} <i>x${W.items[k]}</i></b><span>${esc(ITEMS[k].desc)}</span></div><div class="sbuy"><button data-a="sell" data-v="${k}">${money(ITEMS[k].sell)} each</button></div></div>`).join('') : '<p class="dim">No finds to sell. Dig up sparkling mounds, open chests, and send tiny creatures into cracks.</p>';
+      const finds = Object.keys(ITEMS).filter(k => (ITEMS[k].kind === 'find' || ITEMS[k].kind === 'res') && W.items[k] > 0);
+      body += finds.length ? `<button class="wide" data-a="sellAll">Sell everything (${money(finds.reduce((s, k) => s + ITEMS[k].sell * W.items[k], 0))})</button>` + finds.map(k => `<div class="srow"><img src="${G.inv.icons.get('item:' + k, () => G.holdModel(k))}"><div class="sinfo"><b>${esc(ITEMS[k].name)} <i>x${W.items[k]}</i></b><span>${esc(ITEMS[k].desc)}</span></div><div class="sbuy"><button data-a="sell" data-v="${k}">${money(ITEMS[k].sell)} each</button></div></div>`).join('') : '<p class="dim">Nothing to sell. Chop trees, mine rocks, give your creatures jobs, dig up sparkling mounds and open chests.</p>';
       if (W.items.egg > 0) body += `<p>You have <b>${W.items.egg}</b> Mystery Egg${W.items.egg > 1 ? 's' : ''} - take ${W.items.egg > 1 ? 'them' : 'it'} to the Hatchery.</p>`;
     }
     if (tab === 'zoo') {
@@ -135,7 +139,14 @@ export class Panels {
   }
   _crRow(r, btns) {
     const G = this.g, sp = SP[r.sp], R = RARITY[sp.rarity];
-    return `<div class="srow cr"><img src="${G.inv.icons.creature(r.sp, r.v)}"><div class="sinfo"><b>${esc(r.name || sp.name)} <i style="color:${R.css}">${'&#9733;'.repeat(R.stars)}</i>${r.v ? ` <em class="var">${VARIANTS[r.v].name}</em>` : ''}${r.baby ? ' <em class="var">Baby</em>' : ''}</b><span>${esc(sp.name)} &middot; likes ${HABITATS[sp.move === 'fly' ? 'aviary' : sp.move === 'swim' ? 'aquatic' : sp.habitat]?.name || sp.habitat} &middot; ${SIZE[sp.size].name}</span></div><div class="sbuy">${btns.map(([a, l, ex]) => `<button data-a="${a}" data-v="${r.uid}" ${ex ? `data-ex="${ex}"` : ''}>${esc(l)}</button>`).join('')}</div></div>`;
+    return `<div class="srow cr"><img src="${G.inv.icons.creature(r.sp, r.v)}"><div class="sinfo"><b>${esc(r.name || sp.name)} <i style="color:${R.css}">${'&#9733;'.repeat(R.stars)}</i>${r.v ? ` <em class="var">${VARIANTS[r.v].name}</em>` : ''}${r.baby ? ' <em class="var">Baby</em>' : ''}</b><span>${esc(sp.name)} &middot; likes ${HABITATS[sp.move === 'fly' ? 'aviary' : sp.move === 'swim' ? 'aquatic' : sp.habitat]?.name || sp.habitat} &middot; ${SIZE[sp.size].name}</span></div><div class="sbuy">${btns.map(([a, l, ex]) => `<button data-a="${a}" data-v="${r.uid}" ${ex != null ? `data-ex="${ex}"` : ''} class="${a === 'job' && r.job && r.job === ex ? 'on' : ''}">${a === 'job' ? l : esc(l)}</button>`).join('')}</div></div>`;
+  }
+  /** job buttons: only the jobs this creature can do (with its level) */
+  _jobBtns(r) {
+    const sp = SP[r.sp], out = [];
+    for (const [j, lv] of Object.entries(sp.jobs || {})) if (lv > 0) out.push(['job', (r.job === j ? '&#10003; ' : '') + JOBS[j].name + ' ' + '&#9679;'.repeat(lv), j]);
+    if (r.job) out.push(['job', 'Rest', '']);
+    return out;
   }
   /** "put on show" buttons for the exhibits this animal fits */
   _placeBtns(r) {
@@ -189,17 +200,17 @@ export class Panels {
     }
     if (tab === 'stuff') {
       body += `<h3>Money <i>${money(W.money)}</i></h3><div class="abtns">${[1000, 10000, 100000, 1000000].map(m => b('money', '+' + money(m), m)).join('')}</div>`;
-      body += `<h3>Gear</h3><div class="abtns">${b('tools', 'Every tool')}${b('items', '+20 of every bait')}${b('upg', 'Max all upgrades')}${b('plot', 'Bigger zoo land')}</div>`;
-      body += `<h3>Zoo stars</h3><div class="abtns">${[0, 1, 2, 3, 4, 5, 6, 7].map(n => b('stars', n ? '&#9733;'.repeat(n) : 'none', n, (W.adminLevel || 0) === n)).join('')}</div>`;
+      body += `<h3>Gear</h3><div class="abtns">${b('tools', 'Every tool')}${b('items', '+20 of every bait')}${b('upg', 'Max all upgrades')}${b('plot', 'Bigger base land')}</div>`;
+      body += `<h3>Base level</h3><div class="abtns">${[0, 1, 2, 3, 4, 5, 6, 7].map(n => b('stars', n ? '&#9733;'.repeat(n) : 'none', n, (W.adminLevel || 0) === n)).join('')}</div>`;
     }
     if (tab === 'dinos') {
-      body += `<div class="abtns">${b('giveAll', 'One of every species')}${b('dexAll', 'Fill the Dino Dex')}</div><p class="dim">Click a creature to get it (crate, or the holding pen when the crate is full). Shift-click spawns it wild in front of you.</p>`;
+      body += `<div class="abtns">${b('giveAll', 'One of every species')}${b('dexAll', 'Fill the Collection')}</div><p class="dim">Click a creature to get it (your team, or the base when the team is full). Shift-click spawns it wild in front of you.</p>`;
       body += '<div class="agrid">' + SPECIES.map(s => `<button data-a="adm" data-v="give" data-x="${s.id}" data-sp="${s.id}" title="${esc(s.name)}"><img src="${G.inv.icons.creature(s.id)}"><span>${esc(s.name)}</span><i style="color:${RARITY[s.rarity].css}">${'&#9733;'.repeat(RARITY[s.rarity].stars)}</i></button>`).join('') + '</div>';
       body += `<h3>Rare colours</h3><div class="abtns">${Object.entries(VARIANTS).map(([k, V]) => b('give', V.name + ' T-Rex', 'trex:' + k)).join('')}</div>`;
     }
     if (tab === 'tp') {
       const D = G.landmarks.dock, gp = G.zoo.gatePos();
-      const spots = [['Your zoo', gp.x, gp.z - 8], ['The dock', D.x, D.z - 2]];
+      const spots = [['Your base', gp.x, gp.z - 8], ['The dock', D.x, D.z - 2]];
       const seenB = new Set();
       for (const [bm, x, z, r] of REGIONS) if (r > 2 && !seenB.has(bm)) { seenB.add(bm); spots.push([BIOMES[bm].name, x, z]); }
       for (const I of ISLANDS) if (I.id !== 'reef') spots.push([BIOMES[I.id]?.name || I.id, I.x, I.z]);
@@ -214,7 +225,7 @@ export class Panels {
       body += `<h3>Events</h3><div class="abtns">${['stampede', 'migration', 'golden', 'meteors', 'eruption', 'sea', 'raid', 'titan'].map(e => b('event', e[0].toUpperCase() + e.slice(1), e)).join('')}</div>`;
       body += `<h3>Other</h3><div class="abtns">${b('reveal', 'Reveal the whole map')}${G.quests.inTutorial ? b('skipTut', 'Skip the tutorial') : ''}</div>`;
     }
-    const tabs = [['me', 'Me'], ['stuff', 'Money & gear'], ['dinos', 'Dinosaurs'], ['tp', 'Teleport'], ['world', 'World']];
+    const tabs = [['me', 'Me'], ['stuff', 'Money & gear'], ['dinos', 'Creatures'], ['tp', 'Teleport'], ['world', 'World']];
     return `<div class="phead"><h2>Admin Panel</h2><div class="pmoney">${svg('coin')} ${money(W.money)}</div></div><div class="ptabs">${tabs.map(([k, n]) => `<button data-a="tab" data-v="${k}" class="${tab === k ? 'on' : ''}">${n}</button>`).join('')}</div><div class="pbody admin">${body}</div>`;
   }
 
@@ -262,14 +273,20 @@ export class Panels {
       return `<div class="dx ${d?.caught ? 'c' : d?.seen ? 's' : ''} ${s.id === sel ? 'sel' : ''}" data-a="dex" data-v="${s.id}" style="--rc:${R.css}"><img src="${icon}"><span>${d?.caught || d?.seen ? esc(s.name) : '???'}</span></div>`;
     }).join('');
     const s = SP[sel], d = W.dex[sel], R = RARITY[s.rarity], known = d?.seen || d?.caught;
+    const moves = [s.move === 'walk' || s.move === 'amph' || s.move === 'fly' ? 'Land' : null, s.move === 'swim' || s.move === 'amph' || s.abilities.includes('swim') ? 'Water' : null, s.move === 'fly' || s.abilities.includes('fly') ? 'Air' : null].filter(Boolean);
+    const lands = [...new Set((s.where || []).map(b => BIOMES[b]?.name || (b === 'river' ? 'Rivers' : null)).filter(Boolean))];
+    const jobs = Object.entries(s.jobs || {}).filter(([, v]) => v > 0);
+    const row = (k, v) => `<div class="dxrow"><span>${k}</span><b>${v}</b></div>`;
     const card = `<div class="dxcard"><img src="${known ? G.inv.icons.creature(s.id) : G.inv.icons.creature(s.id, null, { dark: true })}">
       <h3>${known ? esc(s.name) : '???'}</h3><div class="dsci">${known ? esc(s.sci) : ''}</div>
       <div style="color:${R.css}">${'&#9733;'.repeat(R.stars)} ${R.name}</div>
-      <p>${known ? esc(s.lore) : 'Not seen yet.'}</p>
-      <p class="dhint">${svg('eye')} ${esc(s.hint)}</p>
-      ${d?.caught ? `<p>Caught: <b>${d.caught}</b>${d.best ? ' &middot; biggest ' + fmtKg(d.best) : ''}${d.v?.length ? ' &middot; colours: ' + d.v.map(v => VARIANTS[v].name).join(', ') : ''}</p><div class="dab">${s.abilities.filter(a => ABILITIES[a]).map(a => `<span class="chip" title="${esc(ABILITIES[a].desc)}">${svg(ABILITIES[a].icon)}${esc(ABILITIES[a].name)}</span>`).join('')}</div><p class="dim">${esc(s.abilities.filter(a => ABILITIES[a]).map(a => ABILITIES[a].desc).join(' '))}</p>` : known ? '<p class="dim">Catch one to learn what it can do.</p>' : ''}
+      <p>${known ? esc(s.lore) : 'Not discovered yet.'}</p>
+      ${row('Habitat', esc(lands.join(', ') || '?'))}
+      ${known ? row('Moves on', moves.join(' + ')) + row('Size', SIZE[s.size].name + (s.ride === false ? ' - too small to ride' : ' - rideable')) + row('Personality', PERSONALITY[s.personality] || '-') : ''}
+      ${known && jobs.length ? `<div class="dxjobs">${jobs.map(([j, v]) => `<span class="chip" title="${esc(JOBS[j].desc)}">${esc(JOBS[j].name)} ${'&#9679;'.repeat(v)}</span>`).join('')}</div>` : ''}
+      ${d?.caught ? `<p>Caught: <b>${d.caught}</b>${d.best ? ' &middot; biggest ' + fmtKg(d.best) : ''}${d.v?.length ? ' &middot; colours: ' + d.v.map(v => VARIANTS[v].name).join(', ') : ''}</p><div class="dab">${s.abilities.filter(a => ABILITIES[a]).map(a => `<span class="chip" title="${esc(ABILITIES[a].desc)}">${svg(ABILITIES[a].icon)}${esc(ABILITIES[a].name)}</span>`).join('')}</div><p class="dim">${esc(s.abilities.filter(a => ABILITIES[a]).map(a => ABILITIES[a].desc).join(' '))}</p>` : known ? '<p class="dim">Catch one to learn its abilities.</p>' : '<p class="dim">' + esc(s.hint) + '</p>'}
     </div>`;
-    return `<div class="phead"><h2>Dino Dex</h2><div class="pmoney">${caught} / ${SPECIES.length} caught</div></div><div class="pbody dexwrap"><div class="dxgrid">${grid}</div>${card}</div>`;
+    return `<div class="phead"><h2>Collection</h2><div class="pmoney">${caught} / ${SPECIES.length} caught &middot; ${SPECIES.filter(x => W.dex[x.id]?.seen || W.dex[x.id]?.caught).length} discovered</div></div><div class="pbody dexwrap"><div class="dxgrid">${grid}</div>${card}</div>`;
   }
 
   /* ---------------- the map ---------------- */

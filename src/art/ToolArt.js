@@ -57,6 +57,8 @@ const HOLD = {
     for (const f of [0.35, 0.6, 0.85]) M.add(geo.tor(8, 0.2), mat4(0, -0.15 + 1.1 * f + 0.02, -0.05 + 1.5 * f, 0, 0.05, 0.05, 0.05, 0, 0), '#d8d0b8');
     return M;
   },
+  chop(c) { const M = new Mesher(0.05, 16); M.box(0, -0.1, 0, 0.05, 0.75, 0.05, '#7a5a3a'); M.box(0, 0.22, 0.09, 0.04, 0.2, 0.2, c); M.add(geo.box(), mat4(0, 0.22, 0.2, 0, 0.03, 0.26, 0.06, 0, 0), shade(c, 1.2)); return M; },
+  mine(c) { const M = new Mesher(0.05, 17); M.box(0, -0.1, 0, 0.05, 0.75, 0.05, '#7a5a3a'); M.add(geo.box(), mat4(0, 0.27, 0, 0, 0.05, 0.06, 0.6, 0.25, 0), c); M.add(geo.cone(4), mat4(0, 0.2, 0.32, 0, 0.06, 0.18, 0.06, 2.1, 0), c); M.add(geo.cone(4), mat4(0, 0.2, -0.32, 0, 0.06, 0.18, 0.06, -2.1, 0), c); return M; },
   journal(c) { const M = new Mesher(0.05, 15); M.box(0, -0.12, 0.06, 0.24, 0.05, 0.32, c); M.box(0, -0.07, 0.06, 0.22, 0.04, 0.3, '#f4ecd8'); M.box(0, -0.03, 0.06, 0.24, 0.04, 0.32, c); M.box(0.06, -0.12, 0.06, 0.03, 0.14, 0.33, '#c8a040'); return M; },
   scan() { const M = new Mesher(0.05, 8); for (const s of [-1, 1]) { M.add(geo.cyl(8), mat4(s * 0.06, 0, 0.08, 0, 0.09, 0.18, 0.09, Math.PI / 2, 0), '#2a2a32'); M.add(geo.cyl(8), mat4(s * 0.06, 0, 0.18, 0, 0.07, 0.02, 0.07, Math.PI / 2, 0), '#6ab0e0'); } M.box(0, 0, 0.06, 0.08, 0.05, 0.08, '#3a3a44'); return M; },
   cut(c) { const M = new Mesher(0.05, 9); M.box(0, -0.06, 0, 0.05, 0.18, 0.05, '#4a2a1a'); M.add(geo.box(), mat4(0, 0.25, 0.04, 0, 0.03, 0.5, 0.1, 0.1, 0), c); return M; },

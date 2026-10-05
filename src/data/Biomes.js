@@ -21,7 +21,7 @@
    North is -z. */
 
 export const BIOMES = {
-  home:     { name: 'Home Island',        tag: 'Your zoo. Your home. The world is out there.', ground: ['#8fc45a', '#86bd52', '#9ccb62'], fog: '#cfe8f0', amb: 'meadow', danger: 0 },
+  home:     { name: 'Home Island',        tag: 'Your base. Your creatures. The world is out there.', ground: ['#8fc45a', '#86bd52', '#9ccb62'], fog: '#cfe8f0', amb: 'meadow', danger: 0 },
   meadow:   { name: 'Fernvale Shore',     tag: 'Easy pickings on the north shore',  ground: ['#8fc45a', '#7db54c', '#a3cf63'], fog: '#cfe8f0', amb: 'meadow',   danger: 1 },
   lake:     { name: 'The Glass Lagoon',   tag: 'Calm water, curious creatures',     ground: ['#d8c890', '#c8b880', '#bfae78'], fog: '#c4e6f0', amb: 'ocean',    danger: 1 },
   jungle:   { name: 'The Verdant Tangle', tag: 'Dense, loud and full of teeth',     ground: ['#4f9a3c', '#3f8a35', '#5ea847'], fog: '#b8dcc0', amb: 'jungle',   danger: 2 },

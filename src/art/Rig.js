@@ -261,6 +261,7 @@ export const shapes = {
   oct: () => GC.oct || (GC.oct = new THREE.OctahedronGeometry(0.5, 0)),
   dode: () => GC.dode || (GC.dode = new THREE.DodecahedronGeometry(0.5, 0)),
   disc: (n = 10) => GC['d' + n] || (GC['d' + n] = new THREE.CylinderGeometry(0.5, 0.5, 1, n)),
+  sph: (w = 8, h = 6) => GC['s' + w + h] || (GC['s' + w + h] = new THREE.SphereGeometry(0.5, w, h)),
 };
 const _m = new THREE.Matrix4(), _qq = new THREE.Quaternion(), _e = new THREE.Euler(), _sc = V();
 /** matrix from position, euler rotation and scale */
