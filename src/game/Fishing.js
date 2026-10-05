@@ -133,7 +133,7 @@ export class Fishing {
   /** what bites here: the wild tables for this water, tilted toward small things */
   pick() {
     const G = this.g, ctx = G.wild._ctx(this.bpos.x, this.bpos.z);
-    ctx.depth = Math.max(ctx.depth, 2.5); ctx.fishing = true;
+    ctx.depth = Math.max(ctx.depth, 2.5);
     const list = G.wild.weights(ctx, 'swim').map(e => ({ sp: e.sp, w: e.w * ({ S: 3, M: 1.5, L: 0.55, XL: 0.22 }[e.sp.size]) * (this.rod.effect === 'luck' && RARITY[e.sp.rarity].stars >= 3 ? 2 : 1) }));
     const p = weighted(list);
     return p ? p.sp : SP.coel;

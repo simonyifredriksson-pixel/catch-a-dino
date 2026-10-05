@@ -306,14 +306,6 @@ const SUITES = {
     t.ok('a shadow shows over a swimmer', G.signs.shadows.some(s => s.visible));
     t.ok('rarer far from home', (() => { const w = (x, z) => { const ctx = G.wild._ctx(x, z); return G.wild.weights(ctx, 'swim').filter(e => e.sp.rarity === 'epic' || e.sp.rarity === 'legendary').reduce((a, e) => a + e.w, 0) / Math.max(1e-6, G.wild.weights(ctx, 'swim').reduce((a, e) => a + e.w, 0)); }; const a = w(0, 330), b = w(-1000, 100); return b > a; })());
     G.wild.remove(c);
-    // the lagoon is safe: no hunters spawn there, and none hunt you near home
-    const lag = G.wild.weights(G.wild._ctx(0, 380), 'swim');
-    t.ok('no aggressive swimmers spawn in the lagoon (' + lag.map(e => e.sp.id).join(',') + ')', lag.length > 0 && !lag.some(e => e.sp.temper === 'aggressive'));
-    G.teleport(0, 380, null); sim(G, 0.5);
-    const x = G.wild.add({ sp: 'xiphac', x: G.player.pos.x + 8, z: G.player.pos.z, y: -2, size: 0.5 });
-    let bit = 0; const hp0 = G.hitPlayer.bind(G); G.hitPlayer = (...a) => { bit++; return hp0(...a); };
-    sim(G, 20); G.hitPlayer = hp0; G.wild.remove(x);
-    t.ok('a predator fish in the lagoon leaves a swimmer alone (bites ' + bit + ', mode ' + G.player.mode + ')', bit === 0 && G.player.mode === 'swim');
     // climb out of the water onto the dock
     const D = G.landmarks.dock;
     G.teleport(D.x + D.hw + 0.9, D.z - 8, null); G.input.keys.add('Space'); sim(G, 3); G.input.keys.delete('Space'); sim(G, 0.3);

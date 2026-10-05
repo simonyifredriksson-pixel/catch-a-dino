@@ -48,8 +48,6 @@ function nearRiver(x, z) {
   }
   return best;
 }
-/** inside this radius of home (the lagoon) sea predators never hunt you */
-const SAFE_R = 560;
 const STATE = ['wander', 'eat', 'rest', 'sleep', 'flee', 'warn', 'charge', 'hunt', 'chase', 'bait', 'follow', 'soar', 'perch', 'cruise', 'dazed', 'held', 'back'];
 
 export class Wild {
@@ -98,8 +96,6 @@ export class Wild {
       if (move && sp.move !== move && !(move === 'walk' && sp.move === 'amph')) continue;
       const here = sp.where.includes(ctx.b) || (ctx.river && sp.where.includes('river'));
       if (!here) continue;
-      // the lagoon is the safe starter water: no hunters roam it (you can still hook one on a rod)
-      if (sp.move === 'swim' && sp.temper === 'aggressive' && !ctx.fishing && (ctx.b === 'lake' || (ctx.dist != null && ctx.dist < SAFE_R))) continue;
       let w = RARITY[sp.rarity].w;
       if (sp.when?.night && !ctx.night) continue;
       if (sp.when?.storm && !ctx.storm) continue;
@@ -502,12 +498,12 @@ export class Wild {
     if (A.st === 'flee') { const from = A.from || near?.pos || c.pos; tx = c.pos.x + (c.pos.x - from.x); tz = c.pos.z + (c.pos.z - from.z); ty = -d1; want = sp.speed.swim; if (A.t <= 0) A.st = 'cruise'; }
     else if (A.st === 'hunt' || A.st === 'charge' || A.st === 'warn') {
       const tp = G.playerPos(A.target);
-      if (!tp || A.t <= 0 || tp.y > 1.5 || Math.hypot(tp.x - HOME.x, tp.z - HOME.z) < SAFE_R) A.st = 'cruise';
+      if (!tp || A.t <= 0 || tp.y > 1.5) A.st = 'cruise';
       else { tx = tp.x; tz = tp.z; ty = Math.min(-0.5, tp.y); want = sp.speed.swim * 0.9; if (c.pos.distanceTo(tp) < c.radius + 2.5) { c.anim.play('attack'); G.hitPlayer(A.target, c, 7); A.st = 'flee'; A.t = 5; A.from = tp.clone(); } }
     } else if (A.st === 'bait' && A.bait) { const b = A.bait; tx = b.x; tz = b.z; ty = -1; if (Math.hypot(b.x - c.pos.x, b.z - c.pos.z) < 4) { want = 1; c.astate = 'eat'; A.eatT = (A.eatT || 0) + dt; if (A.eatT > 12) { b.t = 0; A.st = 'cruise'; A.eatT = 0; } } if (b.t <= 0) A.st = 'cruise'; }
     else {
       A.st = 'cruise';
-      if (near && near.inWater && sp.temper === 'aggressive' && d < 30 && Math.hypot(near.pos.x - HOME.x, near.pos.z - HOME.z) > SAFE_R) { A.st = 'hunt'; A.target = near.pid; A.t = 14; }
+      if (near && near.inWater && sp.temper === 'aggressive' && d < 30) { A.st = 'hunt'; A.target = near.pid; A.t = 14; }
       else if (near && near.inWater && sp.temper === 'skittish' && d < (near.mountSp ? 30 : 18) * (near.crouch ? 0.6 : 1)) { A.st = 'flee'; A.t = 6; A.from = near.pos.clone(); }
       if (sp.fin && !A.leap) ty = -Math.max(0.35, c.height * 0.32);   // cruise just under the surface: the fin cuts the water
       if (A.leap) { ty = 2; want = sp.speed.swim; }
