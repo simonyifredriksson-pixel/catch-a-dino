@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catch a Dino</title>
+<meta name="description" content="Explore a prehistoric world, catch and ride dinosaurs, and build the greatest dinosaur zoo there ever was. Co-op for 1-4 players.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<!-- stamp:start (written by tools/stamp.mjs - do not edit by hand) -->
+<script type="importmap">{
+ "imports": {
+  "./lib/three.module.js": "./lib/three.module.js?v=a762b858",
+  "./src/art/Animator.js": "./src/art/Animator.js?v=e387dbe5",
+  "./src/art/CreatureArt.js": "./src/art/CreatureArt.js?v=e09438a6",
+  "./src/art/FloraArt.js": "./src/art/FloraArt.js?v=4425cfd5",
+  "./src/art/Mesher.js": "./src/art/Mesher.js?v=a1070a57",
+  "./src/art/PeopleArt.js": "./src/art/PeopleArt.js?v=c2817066",
+  "./src/art/Rig.js": "./src/art/Rig.js?v=da75b675",
+  "./src/art/ToolArt.js": "./src/art/ToolArt.js?v=bee56fc9",
+  "./src/art/ZooArt.js": "./src/art/ZooArt.js?v=d8d35303",
+  "./src/core/Audio.js": "./src/core/Audio.js?v=bec50a1f",
+  "./src/core/Bus.js": "./src/core/Bus.js?v=4755b30f",
+  "./src/core/Input.js": "./src/core/Input.js?v=b529a928",
+  "./src/core/Noise.js": "./src/core/Noise.js?v=7444bfcc",
+  "./src/core/Util.js": "./src/core/Util.js?v=8eeb46fc",
+  "./src/data/Abilities.js": "./src/data/Abilities.js?v=adc4a810",
+  "./src/data/Biomes.js": "./src/data/Biomes.js?v=db2714ff",
+  "./src/data/Build.js": "./src/data/Build.js?v=15129a4e",
+  "./src/data/Items.js": "./src/data/Items.js?v=6f859755",
+  "./src/data/Places.js": "./src/data/Places.js?v=be71e4d4",
+  "./src/data/Species.js": "./src/data/Species.js?v=e7a9c81b",
+  "./src/data/Tools.js": "./src/data/Tools.js?v=009b1bf4",
+  "./src/debug/Tests.js": "./src/debug/Tests.js?v=e9cc6108",
+  "./src/game/Abilities.js": "./src/game/Abilities.js?v=3eaec852",
+  "./src/game/Build.js": "./src/game/Build.js?v=003ed287",
+  "./src/game/Camera.js": "./src/game/Camera.js?v=2bd367de",
+  "./src/game/Catching.js": "./src/game/Catching.js?v=eaf31393",
+  "./src/game/Creature.js": "./src/game/Creature.js?v=2a544c54",
+  "./src/game/Effects.js": "./src/game/Effects.js?v=22c1eb58",
+  "./src/game/Events.js": "./src/game/Events.js?v=40b902ab",
+  "./src/game/Game.js": "./src/game/Game.js?v=95367569",
+  "./src/game/Player.js": "./src/game/Player.js?v=b7e73a0b",
+  "./src/game/Quests.js": "./src/game/Quests.js?v=f9dbfae4",
+  "./src/game/Riding.js": "./src/game/Riding.js?v=17b1749e",
+  "./src/game/State.js": "./src/game/State.js?v=1c5bb1dd",
+  "./src/game/Tools.js": "./src/game/Tools.js?v=8fec8c32",
+  "./src/game/Visitors.js": "./src/game/Visitors.js?v=8dfe44a3",
+  "./src/game/Wild.js": "./src/game/Wild.js?v=8e1bfcc9",
+  "./src/game/Zoo.js": "./src/game/Zoo.js?v=5f53e312",
+  "./src/main.js": "./src/main.js?v=9a883b3d",
+  "./src/net/Net.js": "./src/net/Net.js?v=97e6fc29",
+  "./src/ui/Icons.js": "./src/ui/Icons.js?v=ceb754da",
+  "./src/ui/Inventory.js": "./src/ui/Inventory.js?v=78bd999c",
+  "./src/ui/Panels.js": "./src/ui/Panels.js?v=e89f18b9",
+  "./src/ui/UI.js": "./src/ui/UI.js?v=624bea1c",
+  "./src/world/Colliders.js": "./src/world/Colliders.js?v=8c591c37",
+  "./src/world/Landmarks.js": "./src/world/Landmarks.js?v=1847126f",
+  "./src/world/Scatter.js": "./src/world/Scatter.js?v=232ad0fd",
+  "./src/world/Sky.js": "./src/world/Sky.js?v=1735c370",
+  "./src/world/Terrain.js": "./src/world/Terrain.js?v=15412b6c",
+  "./src/world/Water.js": "./src/world/Water.js?v=0277f79e"
+ }
+}</script>
+<!-- stamp:end -->
+<link rel="stylesheet" href="styles/main.css?v=fb29cebf">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M6 34c0-8 6-14 14-14h4l6-6 2 8 6 2-4 6c2 6-2 12-10 12H18l-6 6v-6c-3-2-6-5-6-8z' fill='%235aa04a' stroke='%232a3a1a' stroke-width='3'/%3E%3Ccircle cx='31' cy='22' r='2' fill='%232a3a1a'/%3E%3C/svg%3E">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud" class="hidden"></div>
+<div id="panel"></div>
+<input id="chatbox" maxlength="120" placeholder="Say something... (Enter)" style="display:none" autocomplete="off">
+<div id="fade"><div class="ft"></div><div class="fs"></div></div>
+<div id="flash"></div>
+
+<div id="title">
+  <div class="tbox">
+    <div class="logo"><span class="l1">CATCH A</span><span class="l2">DINO</span></div>
+    <div class="tag">Explore. Catch. Ride. Build the greatest dinosaur zoo there ever was.</div>
+    <div class="trow">
+      <label>Your name <input id="tname" maxlength="16" autocomplete="off"></label>
+      <div class="looks" id="tlooks"></div>
+    </div>
+    <div class="tbtns">
+      <button id="bcont" class="big">CONTINUE</button>
+      <button id="bnew" class="big">NEW ZOO</button>
+      <button id="bhost">HOST CO-OP</button>
+      <div class="join"><input id="tcode" maxlength="5" placeholder="CODE" autocomplete="off"><button id="bjoin">JOIN CO-OP</button></div>
+    </div>
+    <div id="tmsg"></div>
+    <div class="tfoot">1-4 players &middot; WASD + mouse &middot; co-op over the internet with a room code</div>
+  </div>
+</div>
+<div id="loading"><div class="lt">CATCH A DINO</div><div id="loadtxt">Hatching the world...</div></div>
+<pre id="errlog"></pre>
+<noscript><p style="color:#fff;padding:20px">Catch a Dino needs JavaScript and WebGL.</p></noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js" async></script>
+<script type="module" src="src/main.js?v=9a883b3d"></script>
+</body>
+</html>
